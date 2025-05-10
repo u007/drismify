@@ -222,6 +222,11 @@ export function createBatchExtension(): BatchExtension {
       $batch: async function<T>(callback: (client: any) => Promise<T>): Promise<T> {
         const adapter = this.$getAdapter();
         
+        // Ensure adapter is connected before starting transaction
+        if (!adapter.isActive()) {
+          await adapter.connect();
+        }
+        
         try {
           // Begin transaction
           await adapter.beginTransaction();
@@ -235,7 +240,9 @@ export function createBatchExtension(): BatchExtension {
           return result;
         } catch (error) {
           // Rollback transaction
-          await adapter.rollbackTransaction();
+          if (adapter.isActive()) {
+            await adapter.rollbackTransaction();
+          }
           throw error;
         }
       }
@@ -253,21 +260,38 @@ export function createTransactionExtension(): TransactionExtension {
     transaction: {
       $begin: async function() {
         const adapter = this.$getAdapter();
+        // Ensure adapter is connected before beginning transaction
+        if (!adapter.isActive()) {
+          await adapter.connect();
+        }
         await adapter.beginTransaction();
       },
       
       $commit: async function() {
         const adapter = this.$getAdapter();
+        // Ensure adapter is connected before committing transaction
+        if (!adapter.isActive()) {
+          throw new Error('Cannot commit transaction: Database adapter is not connected');
+        }
         await adapter.commitTransaction();
       },
       
       $rollback: async function() {
         const adapter = this.$getAdapter();
+        // Ensure adapter is connected before rolling back transaction
+        if (!adapter.isActive()) {
+          throw new Error('Cannot rollback transaction: Database adapter is not connected');
+        }
         await adapter.rollbackTransaction();
       },
       
       $transaction: async function<T>(callback: (client: any) => Promise<T>): Promise<T> {
         const adapter = this.$getAdapter();
+        
+        // Ensure adapter is connected before starting transaction
+        if (!adapter.isActive()) {
+          await adapter.connect();
+        }
         
         try {
           // Begin transaction
@@ -282,7 +306,9 @@ export function createTransactionExtension(): TransactionExtension {
           return result;
         } catch (error) {
           // Rollback transaction
-          await adapter.rollbackTransaction();
+          if (adapter.isActive()) {
+            await adapter.rollbackTransaction();
+          }
           throw error;
         }
       }
@@ -291,6 +317,11 @@ export function createTransactionExtension(): TransactionExtension {
       $transaction: async function<T>(callback: (client: any) => Promise<T>): Promise<T> {
         const adapter = this.$getAdapter();
         
+        // Ensure adapter is connected before starting transaction
+        if (!adapter.isActive()) {
+          await adapter.connect();
+        }
+        
         try {
           // Begin transaction
           await adapter.beginTransaction();
@@ -304,7 +335,9 @@ export function createTransactionExtension(): TransactionExtension {
           return result;
         } catch (error) {
           // Rollback transaction
-          await adapter.rollbackTransaction();
+          if (adapter.isActive()) {
+            await adapter.rollbackTransaction();
+          }
           throw error;
         }
       }

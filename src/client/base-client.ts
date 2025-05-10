@@ -172,3 +172,7 @@ export const Drismify = {
    */
   getExtensionContext
 };
+
+// Export PrismaClient as an alias for DrismifyClient
+// This allows compatibility with tests and code that expects the PrismaClient name
+export const PrismaClient = DrismifyClient;
