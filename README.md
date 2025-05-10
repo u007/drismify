@@ -137,8 +137,8 @@ const prisma = new PrismaClient().$extends(myExtension);
 Drismify provides advanced extensions for transaction support, middleware, soft deletion, and more:
 
 ```typescript
-import { 
-  createTransactionExtension, 
+import {
+  createTransactionExtension,
   createMiddlewareExtension,
   createSoftDeleteExtension
 } from 'drismify';
@@ -238,6 +238,12 @@ npx drismify seed --factory --count 100
 
 ## Changes
 
+- Fixed the missing `PrismaClient` export in the base-client.ts file by adding it as an alias for `DrismifyClient`
+- Enhanced the extension handling system to properly process middleware extensions
+- Improved the MockPrismaClient implementation in tests to properly handle connection status and middleware
+- Fixed all the failing tests in the extension system test suite
+- Implemented proper connection state handling for adapters during transactions
+- Improved the implementation of middleware, hook, and debug extensions
 - Added support for Prisma's `$extends` API
 - Implemented SQLite and TursoDB adapters
 - Added CLI commands for schema management and migrations

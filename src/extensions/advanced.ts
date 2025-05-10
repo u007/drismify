@@ -502,48 +502,162 @@ export function createComputedFieldsExtension(
 }
 
 /**
+ * Configuration options for soft delete extension
+ */
+export interface SoftDeleteOptions {
+  /**
+   * Field name to use for marking records as deleted (default: 'deleted')
+   */
+  deletedField?: string;
+  
+  /**
+   * Field name to use for storing deletion timestamp (default: 'deletedAt')
+   */
+  deletedAtField?: string;
+  
+  /**
+   * When true, soft deleted records are included in includes/relations (default: false)
+   */
+  includeDeletedInRelations?: boolean;
+  
+  /**
+   * When true, eager load deleted status in relations (default: false)
+   */
+  propagateDeletedStatus?: boolean;
+
+  /**
+   * Custom filter to use for excluding deleted records (default: undefined)
+   * If provided, this function will be called instead of the default filter
+   */
+  customDeletedFilter?: (args: any) => any;
+  
+  /**
+   * When true, enables debug logging for the extension (default: false)
+   */
+  debug?: boolean;
+}
+
+/**
  * Create a soft delete extension
  * This function creates an extension that handles soft deletion of records
+ * 
+ * @param options Configuration options for soft delete behavior
+ * @returns Extension for handling soft deletion
  */
-export function createSoftDeleteExtension(
-  deletedField: string = 'deleted',
-  deletedAtField: string = 'deletedAt'
-): Extension {
+export function createSoftDeleteExtension(options?: SoftDeleteOptions | string): Extension {
+  // Handle legacy function signature
+  let config: SoftDeleteOptions = {};
+  
+  if (typeof options === 'string') {
+    config = {
+      deletedField: options,
+      deletedAtField: arguments[1] as string
+    };
+  } else {
+    config = options || {};
+  }
+  
+  // Set default values
+  const deletedField = config.deletedField || 'deleted';
+  const deletedAtField = config.deletedAtField || 'deletedAt';
+  const includeDeletedInRelations = config.includeDeletedInRelations || false;
+  const propagateDeletedStatus = config.propagateDeletedStatus || false;
+  const debug = config.debug || false;
+  
+  // Function to apply the not-deleted filter to query args
+  const applyNotDeletedFilter = (args: any) => {
+    if (config.customDeletedFilter) {
+      return config.customDeletedFilter(args);
+    }
+    
+    args = args || {};
+    args.where = args.where || {};
+    
+    if (debug) {
+      console.log('SoftDelete: applyNotDeletedFilter - before:', JSON.stringify(args));
+    }
+    
+    // Only apply filter if not explicitly asking for deleted records
+    if (args.where[deletedField] === undefined) {
+      args.where[deletedField] = false;
+    }
+    
+    // Handle include relations if configured
+    if (!includeDeletedInRelations && args.include) {
+      for (const relationName in args.include) {
+        if (args.include[relationName] && typeof args.include[relationName] === 'object') {
+          if (!args.include[relationName].where) {
+            args.include[relationName].where = {};
+          }
+          
+          // Only apply filter if not already specified
+          if (args.include[relationName].where[deletedField] === undefined) {
+            args.include[relationName].where[deletedField] = false;
+          }
+        }
+      }
+    }
+    
+    if (debug) {
+      console.log('SoftDelete: applyNotDeletedFilter - after:', JSON.stringify(args));
+    }
+    return args;
+  };
+  
+  // Function to apply deleted filter to query args
+  const applyDeletedFilter = (args: any) => {
+    args = args || {};
+    args.where = args.where || {};
+    if (debug) {
+      console.log('SoftDelete: applyDeletedFilter - before:', JSON.stringify(args));
+    }
+    args.where[deletedField] = true;
+    if (debug) {
+      console.log('SoftDelete: applyDeletedFilter - after:', JSON.stringify(args));
+    }
+    return args;
+  };
+  
+  // Function to remove deleted filter from query args
+  const removeDeletedFilter = (args: any) => {
+    args = args || {};
+    args.where = args.where || {};
+    if (debug) {
+      console.log('SoftDelete: removeDeletedFilter - before:', JSON.stringify(args));
+    }
+    delete args.where[deletedField];
+    if (debug) {
+      console.log('SoftDelete: removeDeletedFilter - after:', JSON.stringify(args));
+    }
+    return args;
+  };
+  
   return {
     name: 'SoftDeleteExtension',
     query: {
       $allModels: {
-        findMany: (args: any) => {
-          args = args || {};
-          args.where = args.where || {};
-          args.where[deletedField] = false;
-          return args;
-        },
-        findFirst: (args: any) => {
-          args = args || {};
-          args.where = args.where || {};
-          args.where[deletedField] = false;
-          return args;
-        },
-        findUnique: (args: any) => {
-          args = args || {};
-          args.where = args.where || {};
-          args.where[deletedField] = false;
-          return args;
-        },
-        count: (args: any) => {
-          args = args || {};
-          args.where = args.where || {};
-          args.where[deletedField] = false;
-          return args;
-        }
+        findMany: applyNotDeletedFilter,
+        findFirst: applyNotDeletedFilter,
+        findUnique: applyNotDeletedFilter,
+        findById: applyNotDeletedFilter,
+        count: applyNotDeletedFilter,
+        aggregate: applyNotDeletedFilter,
+        groupBy: applyNotDeletedFilter
       }
     },
     model: {
       $allModels: {
-        softDelete: async function(where: any) {
+        /**
+         * Soft delete records matching the where condition
+         * 
+         * @param params Query parameters including where condition
+         * @returns The updated records
+         */
+        softDelete: async function(params: any) {
           const now = new Date();
-          return this.update({
+          const where = params?.where || params;
+          
+          return this.updateMany({
             where,
             data: {
               [deletedField]: true,
@@ -551,13 +665,33 @@ export function createSoftDeleteExtension(
             }
           });
         },
-        hardDelete: async function(where: any) {
-          return this.delete({
-            where
+        
+        /**
+         * Permanently delete records matching the where condition
+         * This ignores the soft delete status
+         * 
+         * @param params Query parameters including where condition
+         * @returns The deleted records
+         */
+        hardDelete: async function(params: any) {
+          const where = params?.where || params;
+          
+          // Use updateMany to bypass soft delete filter
+          return this.deleteMany({
+            where: removeDeletedFilter({ where }).where
           });
         },
-        restore: async function(where: any) {
-          return this.update({
+        
+        /**
+         * Restore soft-deleted records matching the where condition
+         * 
+         * @param params Query parameters including where condition
+         * @returns The restored records
+         */
+        restore: async function(params: any) {
+          const where = params?.where || params;
+          
+          return this.updateMany({
             where: {
               ...where,
               [deletedField]: true
@@ -568,18 +702,76 @@ export function createSoftDeleteExtension(
             }
           });
         },
+        
+        /**
+         * Find only soft-deleted records
+         * 
+         * @param args Query parameters
+         * @returns Soft-deleted records matching the query
+         */
         findDeleted: async function(args: any = {}) {
-          args = args || {};
-          args.where = args.where || {};
-          args.where[deletedField] = true;
-          return this.findMany(args);
+          if (debug) {
+            console.log('SoftDelete: findDeleted called with args:', JSON.stringify(args));
+          }
+          const modifiedArgs = applyDeletedFilter(args);
+          if (debug) {
+            console.log('SoftDelete: findDeleted using modified args:', JSON.stringify(modifiedArgs));
+          }
+          return this.findMany(modifiedArgs);
         },
+        
+        /**
+         * Find records regardless of soft-delete status
+         * 
+         * @param args Query parameters
+         * @returns All records matching the query, including soft-deleted ones
+         */
         findWithDeleted: async function(args: any = {}) {
-          args = args || {};
-          args.where = args.where || {};
-          delete args.where[deletedField];
-          return this.findMany(args);
+          return this.findMany(removeDeletedFilter(args));
+        },
+        
+        /**
+         * Count soft-deleted records
+         * 
+         * @param args Query parameters
+         * @returns Count of soft-deleted records matching the query
+         */
+        countDeleted: async function(args: any = {}) {
+          return this.count(applyDeletedFilter(args));
+        },
+        
+        /**
+         * Count all records regardless of soft-delete status
+         * 
+         * @param args Query parameters
+         * @returns Count of all records matching the query, including soft-deleted ones
+         */
+        countWithDeleted: async function(args: any = {}) {
+          return this.count(removeDeletedFilter(args));
         }
+      }
+    },
+    client: {
+      /**
+       * Configure soft delete options at runtime
+       * 
+       * @param newOptions New soft delete options
+       * @returns Updated client with new soft delete options
+       */
+      $configureSoftDelete: function(newOptions: SoftDeleteOptions) {
+        return this.$extends(createSoftDeleteExtension({
+          ...config,
+          ...newOptions
+        }));
+      },
+      
+      /**
+       * Get current soft delete configuration
+       * 
+       * @returns Current soft delete configuration
+       */
+      $getSoftDeleteConfig: function() {
+        return { ...config };
       }
     }
   };
