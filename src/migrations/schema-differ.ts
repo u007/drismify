@@ -39,7 +39,7 @@ export interface SchemaDifferOptions {
    * Database adapter type
    */
   adapterType?: 'sqlite' | 'turso';
-  
+
   /**
    * Whether to enable debug mode
    */
@@ -52,43 +52,43 @@ export interface SchemaDifferOptions {
  */
 export class SchemaDiffer {
   private options: SchemaDifferOptions;
-  
+
   constructor(options: SchemaDifferOptions = {}) {
     this.options = options;
   }
-  
+
   /**
    * Diff two schemas
    */
   diffSchemas(oldAst: PslAstNode[], newAst: PslAstNode[]): SchemaChange[] {
     const changes: SchemaChange[] = [];
-    
+
     // Extract models from ASTs
     const oldModels = oldAst.filter(node => node.type === 'model') as PslModelAst[];
     const newModels = newAst.filter(node => node.type === 'model') as PslModelAst[];
-    
+
     // Extract enums from ASTs
     const oldEnums = oldAst.filter(node => node.type === 'enum') as PslEnumAst[];
     const newEnums = newAst.filter(node => node.type === 'enum') as PslEnumAst[];
-    
+
     // Create maps for faster lookup
     const oldModelMap = new Map<string, PslModelAst>();
     for (const model of oldModels) {
       oldModelMap.set(model.name, model);
     }
-    
+
     const newModelMap = new Map<string, PslModelAst>();
     for (const model of newModels) {
       newModelMap.set(model.name, model);
     }
-    
+
     // Find added models
     for (const model of newModels) {
       if (!oldModelMap.has(model.name)) {
         changes.push(...this.generateCreateTableChanges(model));
       }
     }
-    
+
     // Find removed models
     for (const model of oldModels) {
       if (!newModelMap.has(model.name)) {
@@ -99,23 +99,23 @@ export class SchemaDiffer {
         });
       }
     }
-    
+
     // Find modified models
     for (const newModel of newModels) {
       const oldModel = oldModelMap.get(newModel.name);
-      
+
       if (oldModel) {
         changes.push(...this.diffModels(oldModel, newModel));
       }
     }
-    
+
     // Handle enums
     // SQLite doesn't support enums directly, so we don't need to generate changes for them
     // But we might want to handle them differently for other database types in the future
-    
+
     return changes;
   }
-  
+
   /**
    * Generate CREATE TABLE changes for a model
    */
@@ -124,45 +124,57 @@ export class SchemaDiffer {
     const columns: string[] = [];
     const primaryKey: string[] = [];
     const uniqueConstraints: string[] = [];
+    const foreignKeys: string[] = [];
     const indexes: { name: string; columns: string[] }[] = [];
-    
+
     // Process fields
     for (const field of model.fields) {
       // Skip relation fields
       if (field.type.isArray) {
         continue;
       }
-      
+
       const columnName = this.toSnakeCase(field.name);
       const columnType = this.mapFieldTypeToSqlType(field.type);
       let columnDef = `${columnName} ${columnType}`;
-      
+
       // Add constraints
       if (!field.type.optional) {
         columnDef += ' NOT NULL';
       }
-      
+
       // Check for primary key
       if (field.attributes.some(attr => attr.name === 'id')) {
         primaryKey.push(columnName);
-        
+
         // Check for autoincrement
-        if (field.attributes.some(attr => 
-          attr.name === 'default' && 
-          attr.args && 
-          typeof attr.args === 'object' && 
-          attr.args.type === 'function' && 
+        if (field.attributes.some(attr =>
+          attr.name === 'default' &&
+          attr.args &&
+          typeof attr.args === 'object' &&
+          attr.args.type === 'function' &&
           attr.args.name === 'autoincrement'
         )) {
           columnDef += ' PRIMARY KEY AUTOINCREMENT';
         }
       }
-      
+
       // Check for unique constraint
       if (field.attributes.some(attr => attr.name === 'unique')) {
         uniqueConstraints.push(`UNIQUE (${columnName})`);
       }
-      
+
+      // Check for relation/foreign key
+      const relationAttr = field.attributes.find(attr => attr.name === 'relation');
+      if (relationAttr && relationAttr.args && relationAttr.args.fields && relationAttr.args.references) {
+        const referencedTable = this.toSnakeCase(field.type.name);
+        const fieldName = relationAttr.args.fields[0];
+        const referencedField = relationAttr.args.references[0];
+
+        // Add foreign key constraint
+        foreignKeys.push(`FOREIGN KEY ("${this.toSnakeCase(fieldName)}") REFERENCES "${referencedTable}"("${this.toSnakeCase(referencedField)}")`);
+      }
+
       // Check for default value
       const defaultAttr = field.attributes.find(attr => attr.name === 'default');
       if (defaultAttr) {
@@ -180,10 +192,10 @@ export class SchemaDiffer {
           columnDef += ` DEFAULT ${defaultAttr.args}`;
         }
       }
-      
+
       columns.push(columnDef);
     }
-    
+
     // Process model-level attributes
     if (model.attributes) {
       for (const attr of model.attributes) {
@@ -198,18 +210,21 @@ export class SchemaDiffer {
         }
       }
     }
-    
+
     // Add primary key constraint if not already added to a column
     if (primaryKey.length > 0 && !columns.some(c => c.includes('PRIMARY KEY'))) {
       columns.push(`PRIMARY KEY (${primaryKey.join(', ')})`);
     }
-    
+
     // Add unique constraints
     columns.push(...uniqueConstraints);
-    
+
+    // Add foreign keys
+    columns.push(...foreignKeys);
+
     // Generate CREATE TABLE statement
-    const createTableSql = `CREATE TABLE ${tableName} (\n  ${columns.join(',\n  ')}\n);`;
-    
+    const createTableSql = `CREATE TABLE "${tableName}" (\n  ${columns.join(',\n  ')}\n);`;
+
     const changes: SchemaChange[] = [
       {
         type: SchemaChangeType.CREATE_TABLE,
@@ -217,7 +232,7 @@ export class SchemaDiffer {
         sql: createTableSql
       }
     ];
-    
+
     // Generate CREATE INDEX statements
     for (const index of indexes) {
       changes.push({
@@ -227,17 +242,17 @@ export class SchemaDiffer {
         sql: `CREATE INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')});`
       });
     }
-    
+
     return changes;
   }
-  
+
   /**
    * Diff two models
    */
   private diffModels(oldModel: PslModelAst, newModel: PslModelAst): SchemaChange[] {
     const changes: SchemaChange[] = [];
     const tableName = this.toSnakeCase(newModel.name);
-    
+
     // Create maps for faster lookup
     const oldFieldMap = new Map<string, PslFieldAst>();
     for (const field of oldModel.fields) {
@@ -245,26 +260,26 @@ export class SchemaDiffer {
         oldFieldMap.set(field.name, field);
       }
     }
-    
+
     const newFieldMap = new Map<string, PslFieldAst>();
     for (const field of newModel.fields) {
       if (!field.type.isArray) { // Skip relation fields
         newFieldMap.set(field.name, field);
       }
     }
-    
+
     // Find added fields
     for (const field of newModel.fields) {
       if (!field.type.isArray && !oldFieldMap.has(field.name)) {
         const columnName = this.toSnakeCase(field.name);
         const columnType = this.mapFieldTypeToSqlType(field.type);
         let columnDef = `${columnType}`;
-        
+
         // Add constraints
         if (!field.type.optional) {
           columnDef += ' NOT NULL';
         }
-        
+
         // Check for default value
         const defaultAttr = field.attributes.find(attr => attr.name === 'default');
         if (defaultAttr) {
@@ -282,7 +297,7 @@ export class SchemaDiffer {
             columnDef += ` DEFAULT ${defaultAttr.args}`;
           }
         }
-        
+
         changes.push({
           type: SchemaChangeType.ALTER_TABLE_ADD_COLUMN,
           tableName,
@@ -291,22 +306,22 @@ export class SchemaDiffer {
         });
       }
     }
-    
+
     // Find removed fields
     // SQLite doesn't support dropping columns directly, so we need to recreate the table
     // For simplicity, we'll skip this for now
-    
+
     // Find modified fields
     // SQLite doesn't support altering columns directly, so we need to recreate the table
     // For simplicity, we'll skip this for now
-    
+
     // Find added indexes
     const oldIndexes = this.extractIndexes(oldModel);
     const newIndexes = this.extractIndexes(newModel);
-    
+
     for (const newIndex of newIndexes) {
       const oldIndex = oldIndexes.find(idx => idx.name === newIndex.name);
-      
+
       if (!oldIndex) {
         changes.push({
           type: SchemaChangeType.CREATE_INDEX,
@@ -316,11 +331,11 @@ export class SchemaDiffer {
         });
       }
     }
-    
+
     // Find removed indexes
     for (const oldIndex of oldIndexes) {
       const newIndex = newIndexes.find(idx => idx.name === oldIndex.name);
-      
+
       if (!newIndex) {
         changes.push({
           type: SchemaChangeType.DROP_INDEX,
@@ -330,17 +345,17 @@ export class SchemaDiffer {
         });
       }
     }
-    
+
     return changes;
   }
-  
+
   /**
    * Extract indexes from a model
    */
   private extractIndexes(model: PslModelAst): { name: string; columns: string[] }[] {
     const tableName = this.toSnakeCase(model.name);
     const indexes: { name: string; columns: string[] }[] = [];
-    
+
     if (model.attributes) {
       for (const attr of model.attributes) {
         if (attr.name === 'index' && attr.args && attr.args.fields && Array.isArray(attr.args.fields)) {
@@ -352,16 +367,16 @@ export class SchemaDiffer {
         }
       }
     }
-    
+
     return indexes;
   }
-  
+
   /**
    * Map a field type to a SQL type
    */
   private mapFieldTypeToSqlType(fieldType: { name: string; optional: boolean; isArray: boolean }): string {
     const { name } = fieldType;
-    
+
     switch (name) {
       case 'String':
         return 'TEXT';
@@ -382,7 +397,7 @@ export class SchemaDiffer {
         return 'INTEGER'; // Foreign keys are typically integers
     }
   }
-  
+
   /**
    * Convert a string from PascalCase to snake_case
    */

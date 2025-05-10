@@ -24,16 +24,16 @@ describe('Prisma Schema Parser', () => {
           url      = "file:./dev.db"
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(1);
       expect(ast[0].type).toBe('datasource');
       expect(ast[0].name).toBe('db');
       expect(ast[0].assignments).toHaveProperty('provider', 'sqlite');
       expect(ast[0].assignments).toHaveProperty('url', 'file:./dev.db');
     });
-    
+
     it('should parse a datasource block with environment variable', () => {
       const schema = `
         datasource db {
@@ -41,9 +41,9 @@ describe('Prisma Schema Parser', () => {
           url      = env("DATABASE_URL")
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(1);
       expect(ast[0].type).toBe('datasource');
       expect(ast[0].name).toBe('db');
@@ -51,7 +51,7 @@ describe('Prisma Schema Parser', () => {
       expect(ast[0].assignments).toHaveProperty('url', 'env("DATABASE_URL")');
     });
   });
-  
+
   describe('Generator Parsing', () => {
     it('should parse a basic generator block', () => {
       const schema = `
@@ -60,9 +60,9 @@ describe('Prisma Schema Parser', () => {
           output   = "./generated/client"
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(1);
       expect(ast[0].type).toBe('generator');
       expect(ast[0].name).toBe('client');
@@ -70,7 +70,7 @@ describe('Prisma Schema Parser', () => {
       expect(ast[0].assignments).toHaveProperty('output', './generated/client');
     });
   });
-  
+
   describe('Model Parsing', () => {
     it('should parse a basic model', () => {
       const schema = `
@@ -80,14 +80,14 @@ describe('Prisma Schema Parser', () => {
           name  String?
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(1);
       expect(ast[0].type).toBe('model');
       expect(ast[0].name).toBe('User');
       expect(ast[0].fields).toHaveLength(3);
-      
+
       // Check id field
       expect(ast[0].fields[0].name).toBe('id');
       expect(ast[0].fields[0].type.name).toBe('Int');
@@ -95,37 +95,37 @@ describe('Prisma Schema Parser', () => {
       expect(ast[0].fields[0].attributes[0].name).toBe('id');
       expect(ast[0].fields[0].attributes[1].name).toBe('default');
       expect(ast[0].fields[0].attributes[1].args.function).toBe('autoincrement');
-      
+
       // Check email field
       expect(ast[0].fields[1].name).toBe('email');
       expect(ast[0].fields[1].type.name).toBe('String');
       expect(ast[0].fields[1].attributes).toHaveLength(1);
       expect(ast[0].fields[1].attributes[0].name).toBe('unique');
-      
+
       // Check name field
       expect(ast[0].fields[2].name).toBe('name');
       expect(ast[0].fields[2].type.name).toBe('String');
       expect(ast[0].fields[2].type.optional).toBe(true);
     });
-    
+
     it('should parse a model with relations', () => {
       const schema = `
         model User {
           id    Int    @id @default(autoincrement())
           posts Post[]
         }
-        
+
         model Post {
           id       Int  @id @default(autoincrement())
           author   User @relation(fields: [authorId], references: [id])
           authorId Int
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(2);
-      
+
       // Check User model
       expect(ast[0].type).toBe('model');
       expect(ast[0].name).toBe('User');
@@ -133,7 +133,7 @@ describe('Prisma Schema Parser', () => {
       expect(ast[0].fields[1].name).toBe('posts');
       expect(ast[0].fields[1].type.name).toBe('Post');
       expect(ast[0].fields[1].type.isArray).toBe(true);
-      
+
       // Check Post model
       expect(ast[1].type).toBe('model');
       expect(ast[1].name).toBe('Post');
@@ -146,7 +146,7 @@ describe('Prisma Schema Parser', () => {
       expect(ast[1].fields[1].attributes[0].args).toHaveProperty('references');
     });
   });
-  
+
   describe('Enum Parsing', () => {
     it('should parse an enum', () => {
       const schema = `
@@ -156,22 +156,22 @@ describe('Prisma Schema Parser', () => {
           MODERATOR
         }
       `;
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(1);
       expect(ast[0].type).toBe('enum');
       expect(ast[0].name).toBe('Role');
       expect(ast[0].values).toEqual(['USER', 'ADMIN', 'MODERATOR']);
     });
   });
-  
+
   describe('Complete Schema Parsing', () => {
     it('should parse a basic complete schema', () => {
       const schema = getFixture('basic-schema.prisma');
-      
+
       const ast = parser.parse(schema);
-      
+
       expect(ast).toHaveLength(4); // datasource, generator, User model, Post model
       expect(ast[0].type).toBe('datasource');
       expect(ast[1].type).toBe('generator');
@@ -180,13 +180,13 @@ describe('Prisma Schema Parser', () => {
       expect(ast[3].type).toBe('model');
       expect(ast[3].name).toBe('Post');
     });
-    
+
     it('should parse a complex complete schema', () => {
       const schema = getFixture('complex-schema.prisma');
-      
+
       const ast = parser.parse(schema);
-      
-      expect(ast).toHaveLength(7); // datasource, generator, enum, 5 models
+
+      expect(ast).toHaveLength(8); // datasource, generator, enum, 5 models
       expect(ast[0].type).toBe('datasource');
       expect(ast[1].type).toBe('generator');
       expect(ast[2].type).toBe('enum');

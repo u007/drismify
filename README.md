@@ -10,11 +10,18 @@ Drismify is a Prisma ORM replacement supporting TursoDB and SQLite with full Pri
 - **Prisma CLI Command Compatibility**: Use familiar Prisma CLI commands
 - **Prisma Extends Support**: Extend your client with custom methods and behaviors
 - **No Database Shadowing**: Direct database access without an intermediary layer
+- **Schema Parser**: Parse Prisma schema files into an AST
+- **Schema Translator**: Translate Prisma schema to Drizzle schema
+- **Migration System**: Generate and apply migrations
 
 ## Installation
 
 ```bash
 npm install drismify
+# or
+pnpm add drismify
+# or
+bun add drismify
 ```
 
 ## Quick Start
@@ -151,3 +158,7 @@ npx drismify migrate deploy
 - Added support for Prisma's `$extends` API
 - Implemented SQLite and TursoDB adapters
 - Added CLI commands for schema management and migrations
+- Fixed parser to correctly handle default function arguments
+- Fixed migration manager to properly detect and apply migrations
+- Improved debug output for migration operations
+- Fixed client generator to include Drismify export

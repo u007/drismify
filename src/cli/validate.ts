@@ -9,17 +9,17 @@ export interface ValidateOptions {
    * Path to the schema file
    */
   schemaPath?: string;
-  
+
   /**
    * Whether to enable verbose output
    */
   verbose?: boolean;
-  
+
   /**
    * Whether to enable linting
    */
   lint?: boolean;
-  
+
   /**
    * Whether to show suggestions for fixing issues
    */
@@ -34,17 +34,17 @@ export interface ValidationResult {
    * Whether the schema is valid
    */
   valid: boolean;
-  
+
   /**
    * Validation errors
    */
   errors: ValidationError[];
-  
+
   /**
    * Validation warnings
    */
   warnings: ValidationWarning[];
-  
+
   /**
    * Suggestions for fixing issues
    */
@@ -59,17 +59,17 @@ export interface ValidationError {
    * Error message
    */
   message: string;
-  
+
   /**
    * Line number
    */
   line?: number;
-  
+
   /**
    * Column number
    */
   column?: number;
-  
+
   /**
    * Error code
    */
@@ -84,17 +84,17 @@ export interface ValidationWarning {
    * Warning message
    */
   message: string;
-  
+
   /**
    * Line number
    */
   line?: number;
-  
+
   /**
    * Column number
    */
   column?: number;
-  
+
   /**
    * Warning code
    */
@@ -109,17 +109,17 @@ export interface ValidationSuggestion {
    * Suggestion message
    */
   message: string;
-  
+
   /**
    * Line number
    */
   line?: number;
-  
+
   /**
    * Column number
    */
   column?: number;
-  
+
   /**
    * Suggested fix
    */
@@ -136,7 +136,7 @@ export async function validateSchema(options: ValidateOptions = {}): Promise<Val
     lint = false,
     suggestions = false
   } = options;
-  
+
   // Check if the schema file exists
   if (!fs.existsSync(schemaPath)) {
     return {
@@ -151,21 +151,21 @@ export async function validateSchema(options: ValidateOptions = {}): Promise<Val
       suggestions: []
     };
   }
-  
+
   // Read the schema file
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
-  
+
   // Parse the schema
   const parser = require('../parser/generatedParser.js');
-  
+
   try {
     const ast = parser.parse(schemaContent);
-    
+
     // Basic validation
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     const validationSuggestions: ValidationSuggestion[] = [];
-    
+
     // Check for datasource
     const datasource = ast.find((node: any) => node.type === 'datasource');
     if (!datasource) {
@@ -173,7 +173,7 @@ export async function validateSchema(options: ValidateOptions = {}): Promise<Val
         message: 'No datasource found in the schema',
         code: 'NO_DATASOURCE'
       });
-      
+
       if (suggestions) {
         validationSuggestions.push({
           message: 'Add a datasource block to the schema',
@@ -193,7 +193,7 @@ datasource db {
           message: 'No provider specified in datasource',
           code: 'NO_PROVIDER'
         });
-        
+
         if (suggestions) {
           validationSuggestions.push({
             message: 'Add a provider to the datasource block',
@@ -211,7 +211,7 @@ datasource db {
           code: 'UNSUPPORTED_PROVIDER'
         });
       }
-      
+
       // Check datasource URL
       const url = datasource.assignments?.url;
       if (!url) {
@@ -219,7 +219,7 @@ datasource db {
           message: 'No URL specified in datasource',
           code: 'NO_URL'
         });
-        
+
         if (suggestions) {
           validationSuggestions.push({
             message: 'Add a URL to the datasource block',
@@ -233,7 +233,7 @@ datasource db {
         }
       }
     }
-    
+
     // Check for generator
     const generator = ast.find((node: any) => node.type === 'generator');
     if (!generator) {
@@ -241,7 +241,7 @@ datasource db {
         message: 'No generator found in the schema',
         code: 'NO_GENERATOR'
       });
-      
+
       if (suggestions) {
         validationSuggestions.push({
           message: 'Add a generator block to the schema',
@@ -261,7 +261,7 @@ generator client {
           message: 'No provider specified in generator',
           code: 'NO_GENERATOR_PROVIDER'
         });
-        
+
         if (suggestions) {
           validationSuggestions.push({
             message: 'Add a provider to the generator block',
@@ -280,7 +280,7 @@ generator client {
         });
       }
     }
-    
+
     // Check for models
     const models = ast.filter((node: any) => node.type === 'model');
     if (models.length === 0) {
@@ -288,7 +288,7 @@ generator client {
         message: 'No models found in the schema',
         code: 'NO_MODELS'
       });
-      
+
       if (suggestions) {
         validationSuggestions.push({
           message: 'Add at least one model to the schema',
@@ -312,7 +312,7 @@ model User {
             message: `Model "${model.name}" has no fields`,
             code: 'MODEL_NO_FIELDS'
           });
-          
+
           if (suggestions) {
             validationSuggestions.push({
               message: `Add fields to model "${model.name}"`,
@@ -327,16 +327,16 @@ model ${model.name} {
           }
         } else {
           // Check if model has an ID field
-          const idField = model.fields.find((field: any) => 
+          const idField = model.fields.find((field: any) =>
             field.attributes && field.attributes.some((attr: any) => attr.name === 'id')
           );
-          
+
           if (!idField) {
             warnings.push({
               message: `Model "${model.name}" has no ID field`,
               code: 'MODEL_NO_ID'
             });
-            
+
             if (suggestions) {
               validationSuggestions.push({
                 message: `Add an ID field to model "${model.name}"`,
@@ -347,7 +347,7 @@ model ${model.name} {
         }
       }
     }
-    
+
     // Additional linting if enabled
     if (lint) {
       // Check for naming conventions
@@ -358,21 +358,21 @@ model ${model.name} {
             message: `Model name "${model.name}" should be PascalCase`,
             code: 'MODEL_NAME_CONVENTION'
           });
-          
+
           if (suggestions) {
             const pascalCaseName = model.name
               .replace(/[^a-zA-Z0-9]/g, ' ')
               .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
               .join('');
-            
+
             validationSuggestions.push({
               message: `Rename model "${model.name}" to "${pascalCaseName}"`,
               fix: `model ${pascalCaseName} {`
             });
           }
         }
-        
+
         // Check field names
         if (model.fields) {
           for (const field of model.fields) {
@@ -382,18 +382,18 @@ model ${model.name} {
                 message: `Field name "${field.name}" in model "${model.name}" should be camelCase`,
                 code: 'FIELD_NAME_CONVENTION'
               });
-              
+
               if (suggestions) {
                 const camelCaseName = field.name
                   .replace(/[^a-zA-Z0-9]/g, ' ')
                   .split(' ')
-                  .map((word: string, index: number) => 
-                    index === 0 
-                      ? word.toLowerCase() 
+                  .map((word: string, index: number) =>
+                    index === 0
+                      ? word.toLowerCase()
                       : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                   )
                   .join('');
-                
+
                 validationSuggestions.push({
                   message: `Rename field "${field.name}" to "${camelCaseName}"`,
                   fix: `${camelCaseName} ${field.type.name}${field.type.optional ? '?' : ''}`
@@ -404,7 +404,7 @@ model ${model.name} {
         }
       }
     }
-    
+
     return {
       valid: errors.length === 0,
       errors,
@@ -414,7 +414,7 @@ model ${model.name} {
   } catch (error: any) {
     // Parse error
     const location = error.location;
-    
+
     return {
       valid: false,
       errors: [

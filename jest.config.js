@@ -16,9 +16,7 @@ module.exports = {
   verbose: true,
   testTimeout: 30000, // 30 seconds
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-    },
-  },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }]
+  }
 };

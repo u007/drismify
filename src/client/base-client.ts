@@ -137,15 +137,16 @@ export class DrismifyClient implements BaseClient {
     );
 
     // Apply the extension(s)
+    let result = newClient;
     if (Array.isArray(extensionOrExtensions)) {
       for (const extension of extensionOrExtensions) {
-        applyExtension(newClient, extension);
+        result = applyExtension(result, extension);
       }
     } else {
-      applyExtension(newClient, extensionOrExtensions);
+      result = applyExtension(result, extensionOrExtensions);
     }
 
-    return newClient;
+    return result;
   }
 
   /**

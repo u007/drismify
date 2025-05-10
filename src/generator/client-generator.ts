@@ -46,22 +46,22 @@ export interface ClientGeneratorOptions {
    * Output directory for the generated client
    */
   outputDir: string;
-  
+
   /**
    * Whether to generate TypeScript types
    */
   generateTypes?: boolean;
-  
+
   /**
    * Whether to generate JavaScript code
    */
   generateJs?: boolean;
-  
+
   /**
    * Whether to generate a package.json file
    */
   generatePackageJson?: boolean;
-  
+
   /**
    * Whether to generate a README.md file
    */
@@ -74,7 +74,7 @@ export interface ClientGeneratorOptions {
  */
 export class ClientGenerator {
   private options: ClientGeneratorOptions;
-  
+
   constructor(options: ClientGeneratorOptions) {
     this.options = {
       generateTypes: true,
@@ -84,7 +84,7 @@ export class ClientGenerator {
       ...options
     };
   }
-  
+
   /**
    * Generate a client from a Prisma schema AST
    */
@@ -93,32 +93,32 @@ export class ClientGenerator {
     if (!fs.existsSync(this.options.outputDir)) {
       fs.mkdirSync(this.options.outputDir, { recursive: true });
     }
-    
+
     // Extract models, enums, and types from the AST
     const models = ast.filter(node => node.type === 'model') as PslModelAst[];
     const enums = ast.filter(node => node.type === 'enum') as PslEnumAst[];
     const types = ast.filter(node => node.type === 'type') as PslTypeAst[];
     const datasource = ast.find(node => node.type === 'datasource');
-    
+
     // Generate the client
     await this.generateClient(models, enums, types, datasource);
   }
-  
+
   /**
    * Generate a client from a Prisma schema file
    */
   async generateFromSchemaFile(schemaPath: string): Promise<void> {
     // Read the schema file
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
-    
+
     // Parse the schema
     const parser = require('../parser/generatedParser.js');
     const ast = parser.parse(schemaContent) as PslAstNode[];
-    
+
     // Generate the client
     await this.generateFromAst(ast);
   }
-  
+
   /**
    * Generate the client
    */
@@ -130,28 +130,28 @@ export class ClientGenerator {
   ): Promise<void> {
     // Generate the index file
     await this.generateIndexFile(models);
-    
+
     // Generate the types file
     if (this.options.generateTypes) {
       await this.generateTypesFile(models, enums, types);
     }
-    
+
     // Generate model files
     for (const model of models) {
       await this.generateModelFile(model, models, enums, types);
     }
-    
+
     // Generate package.json
     if (this.options.generatePackageJson) {
       await this.generatePackageJsonFile();
     }
-    
+
     // Generate README.md
     if (this.options.generateReadme) {
       await this.generateReadmeFile();
     }
   }
-  
+
   /**
    * Generate the index file
    */
@@ -160,12 +160,12 @@ export class ClientGenerator {
       const modelName = model.name;
       return `import { ${modelName} } from './models/${modelName.toLowerCase()}';`;
     }).join('\n');
-    
+
     const modelExports = models.map(model => model.name).join(', ');
-    
+
     const content = `
-import { DrismifyClient } from '../client/base-client';
-import { ClientOptions } from '../client/types';
+import { DrismifyClient, Drismify } from '../../client/base-client';
+import { ClientOptions } from '../../client/types';
 ${modelImports}
 
 /**
@@ -178,10 +178,10 @@ export class PrismaClient extends DrismifyClient {
     const modelVarName = modelName.charAt(0).toLowerCase() + modelName.slice(1);
     return `public readonly ${modelVarName}: ${modelName};`;
   }).join('\n  ')}
-  
+
   constructor(options: ClientOptions = { datasources: { db: {} } }) {
     super(options);
-    
+
     ${models.map(model => {
       const modelName = model.name;
       const modelVarName = modelName.charAt(0).toLowerCase() + modelName.slice(1);
@@ -190,13 +190,13 @@ export class PrismaClient extends DrismifyClient {
   }
 }
 
-export { ${modelExports} };
+export { ${modelExports}, Drismify };
 export * from './types';
 `;
-    
+
     fs.writeFileSync(path.join(this.options.outputDir, 'index.ts'), content);
   }
-  
+
   /**
    * Generate the types file
    */
@@ -210,7 +210,7 @@ export * from './types';
       const enumValues = enumDef.values.map(value => `'${value}'`).join(' | ');
       return `export type ${enumName} = ${enumValues};`;
     }).join('\n\n');
-    
+
     const modelTypes = models.map(model => {
       const modelName = model.name;
       const fields = model.fields.map(field => {
@@ -219,13 +219,13 @@ export * from './types';
         const isOptional = field.type.optional ? '?' : '';
         return `  ${fieldName}${isOptional}: ${fieldType};`;
       }).join('\n');
-      
+
       return `export type ${modelName} = {\n${fields}\n};`;
     }).join('\n\n');
-    
+
     const inputTypes = models.map(model => {
       const modelName = model.name;
-      
+
       // Generate create input type
       const createFields = model.fields.map(field => {
         const fieldName = field.name;
@@ -233,21 +233,21 @@ export * from './types';
         const isOptional = field.type.optional ? '?' : '';
         return `  ${fieldName}${isOptional}: ${fieldType};`;
       }).join('\n');
-      
+
       // Generate update input type
       const updateFields = model.fields.map(field => {
         const fieldName = field.name;
         const fieldType = this.mapFieldType(field.type, enums, types);
         return `  ${fieldName}?: ${fieldType};`;
       }).join('\n');
-      
+
       // Generate where input type
       const whereFields = model.fields.map(field => {
         const fieldName = field.name;
         const fieldType = this.mapFieldType(field.type, enums, types);
         return `  ${fieldName}?: ${fieldType};`;
       }).join('\n');
-      
+
       // Generate where unique input type
       const uniqueFields = model.fields
         .filter(field => field.attributes.some(attr => attr.name === 'id' || attr.name === 'unique'))
@@ -256,13 +256,13 @@ export * from './types';
           const fieldType = this.mapFieldType(field.type, enums, types);
           return `  ${fieldName}?: ${fieldType};`;
         }).join('\n');
-      
+
       // Generate order by input type
       const orderByFields = model.fields.map(field => {
         const fieldName = field.name;
         return `  ${fieldName}?: 'asc' | 'desc';`;
       }).join('\n');
-      
+
       return `
 export type ${modelName}CreateInput = {
 ${createFields}
@@ -296,7 +296,7 @@ ${model.fields
 };
 `;
     }).join('\n');
-    
+
     const content = `
 ${enumTypes}
 
@@ -304,10 +304,10 @@ ${modelTypes}
 
 ${inputTypes}
 `;
-    
+
     fs.writeFileSync(path.join(this.options.outputDir, 'types.ts'), content);
   }
-  
+
   /**
    * Generate a model file
    */
@@ -319,7 +319,7 @@ ${inputTypes}
   ): Promise<void> {
     const modelName = model.name;
     const tableName = this.toSnakeCase(modelName);
-    
+
     const content = `
 import { DatabaseAdapter } from '../../adapters';
 import { BaseModelClient } from '../../client/model-client';
@@ -356,16 +356,16 @@ export class ${modelName} extends BaseModelClient<
   }
 }
 `;
-    
+
     // Create the models directory if it doesn't exist
     const modelsDir = path.join(this.options.outputDir, 'models');
     if (!fs.existsSync(modelsDir)) {
       fs.mkdirSync(modelsDir, { recursive: true });
     }
-    
+
     fs.writeFileSync(path.join(modelsDir, `${modelName.toLowerCase()}.ts`), content);
   }
-  
+
   /**
    * Generate the package.json file
    */
@@ -382,10 +382,10 @@ export class ${modelName} extends BaseModelClient<
   }
 }
 `;
-    
+
     fs.writeFileSync(path.join(this.options.outputDir, 'package.json'), content);
   }
-  
+
   /**
    * Generate the README.md file
    */
@@ -416,10 +416,10 @@ async function main() {
 main().catch(console.error);
 \`\`\`
 `;
-    
+
     fs.writeFileSync(path.join(this.options.outputDir, 'README.md'), content);
   }
-  
+
   /**
    * Map a field type to a TypeScript type
    */
@@ -429,19 +429,19 @@ main().catch(console.error);
     types: PslTypeAst[]
   ): string {
     const { name, isArray } = fieldType;
-    
+
     // Check if the type is an enum
     const isEnum = enums.some(e => e.name === name);
     if (isEnum) {
       return isArray ? `${name}[]` : name;
     }
-    
+
     // Check if the type is a custom type
     const isCustomType = types.some(t => t.name === name);
     if (isCustomType) {
       return isArray ? `${name}[]` : name;
     }
-    
+
     // Map Prisma types to TypeScript types
     switch (name) {
       case 'String':
@@ -462,7 +462,7 @@ main().catch(console.error);
         return isArray ? `${name}[]` : name;
     }
   }
-  
+
   /**
    * Convert a string from PascalCase to snake_case
    */

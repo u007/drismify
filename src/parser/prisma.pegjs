@@ -83,8 +83,8 @@
 
   // Process @default attribute arguments
   function processDefaultArgs(rawArgs) {
-    if (typeof rawArgs === 'object' && rawArgs.type === 'function') {
-      return rawArgs; // Already processed as a function
+    if (typeof rawArgs === 'object' && rawArgs.function) {
+      return rawArgs; // Return the function object as is
     }
 
     // Handle other default values
@@ -182,8 +182,7 @@ ParsedAttributeArgument = DefaultFunctionCall / BooleanLiteral / NumberLiteral /
 DefaultFunctionCall
   = name:DefaultFunctionName _ "(" _ args:DefaultFunctionArgs? _ ")" {
       return {
-        type: "function",
-        name: name,
+        function: name,
         args: args || []
       };
     }
@@ -268,8 +267,13 @@ NonDelimitersNonSlash = char:(!("(" / ")" / "[" / "]" / "\\" / "//") .) { return
 EscapedChar = "\\" escChar:. { return "\\" + escChar; } // Return the full escape sequence
 
 // Assignment: key = value for datasource/generator
-Assignment = _ key:Identifier _ "=" _ value:(StringLiteral / BooleanLiteral / NumberLiteral) _ { // Allow more types for generator/datasource values
+Assignment = _ key:Identifier _ "=" _ value:(EnvFunction / StringLiteral / BooleanLiteral / NumberLiteral) _ { // Allow more types for generator/datasource values
   return { key: key, value: value };
+}
+
+// Environment variable function
+EnvFunction = "env" _ "(" _ varName:StringLiteral _ ")" {
+  return `env("${varName}")`;
 }
 
 // Basic Tokens

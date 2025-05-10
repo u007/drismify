@@ -4,6 +4,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { translatePslToDrizzleSchema } from './translator/pslToDrizzle'; // Import the translator
+// Import CLI modules
 import {
   initProject,
   dbPush,
@@ -16,7 +17,7 @@ import {
   migrateDeploy,
   migrateReset,
   migrateStatus
-} from './cli'; // Import CLI modules
+} from './cli/index';
 
 // Dynamically import the generated parser
 // Note: Adjust path if your generated parser is elsewhere or has a different name
@@ -106,9 +107,20 @@ async function main() {
             const pslContent = fs.readFileSync(pslPath, 'utf-8');
             const pslAst = parser.parse(pslContent) as any[]; // Assuming AST is an array
             const drizzleSchemaContent = translatePslToDrizzleSchema(pslAst);
+
+            // Ensure the output directory exists
             fs.mkdirSync(path.dirname(drizzleSchemaOutPath), { recursive: true });
+
+            // Write the schema file
             fs.writeFileSync(drizzleSchemaOutPath, drizzleSchemaContent);
-            console.log(`Drizzle schema generated successfully at ${drizzleSchemaOutPath}`);
+
+            // Verify the file was written
+            if (!fs.existsSync(drizzleSchemaOutPath)) {
+                throw new Error(`Failed to write schema file to ${drizzleSchemaOutPath}`);
+            }
+
+            console.log(`Schema generated successfully at ${drizzleSchemaOutPath}`);
+            console.log("Schema generated successfully");
         } catch (e: unknown) {
             console.error("Failed to generate Drizzle schema:");
              const error = e as { location?: { start: { line: number; column: number } }; message?: string; stack?:string };
@@ -124,6 +136,9 @@ async function main() {
         console.log(`Generating client from: ${schemaPath}`);
         console.log(`Outputting to: ${outputDir}`);
         try {
+            // Ensure the output directory exists
+            fs.mkdirSync(outputDir, { recursive: true });
+
             const generator = new ClientGenerator({
                 outputDir,
                 generateTypes: true,
@@ -133,6 +148,12 @@ async function main() {
             });
 
             await generator.generateFromSchemaFile(schemaPath);
+
+            // Verify the files were written
+            if (!fs.existsSync(path.join(outputDir, 'index.ts'))) {
+                throw new Error(`Failed to generate client files in ${outputDir}`);
+            }
+
             console.log(`Client generated successfully at ${outputDir}`);
         } catch (e: unknown) {
             console.error("Failed to generate client:");
