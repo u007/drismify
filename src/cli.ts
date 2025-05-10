@@ -46,6 +46,9 @@ async function main() {
     // Import required modules
     const { ClientGenerator } = require('./generator/client-generator');
     const { MigrationGenerator, MigrationManager } = require('./migrations');
+    const { introspectDatabase } = require('./cli/introspect');
+    const { runSeed } = require('./cli/seed');
+    const { startStudio } = require('./cli/studio');
 
     if (command === 'validate' && prismaSchemaPathArg) {
         const schemaPath = path.resolve(prismaSchemaPathArg);
@@ -376,6 +379,77 @@ async function main() {
             console.error(`Message: ${error.message}`);
             console.error(`Stack: ${error.stack}`);
         }
+    } else if (command === 'introspect') {
+        // Introspect database
+        const url = args[1];
+        const provider = args[2] || 'sqlite';
+        const outputPath = args[3] || './schema.prisma';
+
+        console.log(`Introspecting ${provider} database at ${url}`);
+        console.log(`Output path: ${outputPath}`);
+        
+        try {
+            await introspectDatabase({
+                url,
+                provider: provider as 'sqlite' | 'turso',
+                output: outputPath,
+                overwrite: args.includes('--overwrite'),
+                saveComments: !args.includes('--no-comments'),
+                debug: args.includes('--debug')
+            });
+            
+            console.log('Database introspection completed successfully');
+        } catch (e: unknown) {
+            console.error("Failed to introspect database:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
+    } else if (command === 'seed') {
+        // Seed database
+        const schemaPath = args[1] ? path.resolve(args[1]) : path.resolve('./schema.prisma');
+        const seedScript = args[2];
+        
+        console.log(`Seeding database with schema: ${schemaPath}`);
+        
+        try {
+            await runSeed({
+                schemaPath,
+                seedScript,
+                reset: args.includes('--reset'),
+                debug: args.includes('--debug'),
+                factoryMode: args.includes('--factory'),
+                factoryCount: args.includes('--count') ? parseInt(args[args.indexOf('--count') + 1], 10) : 10
+            });
+            
+            console.log('Database seeding completed successfully');
+        } catch (e: unknown) {
+            console.error("Failed to seed database:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
+    } else if (command === 'studio') {
+        // Start Drismify Studio
+        const schemaPath = args[1] ? path.resolve(args[1]) : path.resolve('./schema.prisma');
+        const port = args.includes('--port') ? parseInt(args[args.indexOf('--port') + 1], 10) : 5555;
+        
+        console.log(`Starting Drismify Studio for schema: ${schemaPath}`);
+        console.log(`Port: ${port}`);
+        
+        try {
+            await startStudio({
+                schemaPath,
+                port,
+                browser: !args.includes('--no-browser'),
+                readOnly: args.includes('--read-only')
+            });
+        } catch (e: unknown) {
+            console.error("Failed to start Drismify Studio:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
     } else if (command === 'db' && args[1]) {
         const subCommand = args[1];
         const schemaPath = args[2] ? path.resolve(args[2]) : path.resolve('./schema.prisma');
@@ -481,6 +555,9 @@ async function main() {
         console.log("  generate [schema-path] [output-dir] [--watch] - Generates client code.");
         console.log("  migrate <subcommand> [options]            - Manage database migrations.");
         console.log("  db <subcommand> [options]                 - Manage database.");
+        console.log("  introspect <database-url> [provider] [output-path] - Introspect database.");
+        console.log("  seed [schema-path] [seed-script]          - Seed database.");
+        console.log("  studio [schema-path] [--port 5555]        - Start Drismify Studio.");
         if (command) {
             console.error(`Unknown command: ${command} or missing arguments.`);
         }

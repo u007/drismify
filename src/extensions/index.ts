@@ -4,9 +4,11 @@
  */
 
 import { Extension, ExtensionContext } from './types';
+import * as advancedExtensions from './advanced';
 
 // Export types
 export * from './types';
+export * from './advanced';
 
 /**
  * Define an extension

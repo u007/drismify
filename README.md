@@ -1,7 +1,7 @@
 
 # Drismify
 
-Drismify is a Prisma ORM replacement supporting TursoDB and SQLite with full Prisma schema compatibility, CLI command support, and Prisma extends support.
+Drismify is a Prisma ORM replacement supporting TursoDB and SQLite with full Prisma schema compatibility, CLI command support, and Prisma extends support. It provides advanced features for database management and performance optimization.
 
 ## Features
 
@@ -132,6 +132,39 @@ const myExtension = Drismify.defineExtension({
 const prisma = new PrismaClient().$extends(myExtension);
 ```
 
+### Advanced Extensions
+
+Drismify provides advanced extensions for transaction support, middleware, soft deletion, and more:
+
+```typescript
+import { 
+  createTransactionExtension, 
+  createMiddlewareExtension,
+  createSoftDeleteExtension
+} from 'drismify';
+
+// Add transaction support
+const prisma = new PrismaClient().$extends(createTransactionExtension());
+
+// Use transactions
+const result = await prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({ data: { name: 'Alice' } });
+  return user;
+});
+
+// Add soft delete functionality
+const softDeleteClient = prisma.$extends(createSoftDeleteExtension());
+
+// Soft delete a record (won't appear in normal queries)
+await softDeleteClient.user.softDelete({ where: { id: 1 } });
+
+// Find only soft-deleted records
+const deletedUsers = await softDeleteClient.user.findDeleted();
+
+// Restore a soft-deleted record
+await softDeleteClient.user.restore({ where: { id: 1 } });
+```
+
 ## CLI Commands
 
 Drismify provides a CLI with commands similar to Prisma:
@@ -151,6 +184,56 @@ npx drismify migrate dev
 
 # Apply migrations in production
 npx drismify migrate deploy
+
+# Introspect an existing database
+npx drismify introspect <database-url> [provider]
+
+# Seed the database
+npx drismify seed [schema-path] [seed-script]
+
+# Launch Drismify Studio (web UI)
+npx drismify studio [schema-path] [--port 5555]
+```
+
+## Advanced Features
+
+### Database Studio
+
+Drismify includes a web-based Studio for managing your database:
+
+```bash
+npx drismify studio
+```
+
+This launches a web interface where you can:
+- Browse, create, edit, and delete records
+- View database schema
+- Execute custom queries
+- Visualize relationships between models
+
+### Performance Optimization
+
+```typescript
+// Enable query optimization and caching
+const prisma = new PrismaClient({
+  queryOptimization: true,
+  cache: {
+    enabled: true,
+    ttl: 60 // seconds
+  }
+});
+
+// Or enable them dynamically
+prisma.$enableQueryOptimization();
+prisma.$enableCache();
+```
+
+### Factory Mode for Testing
+
+Generate test data quickly:
+
+```bash
+npx drismify seed --factory --count 100
 ```
 
 ## Changes
@@ -158,6 +241,10 @@ npx drismify migrate deploy
 - Added support for Prisma's `$extends` API
 - Implemented SQLite and TursoDB adapters
 - Added CLI commands for schema management and migrations
+- Added advanced extensions (transactions, middleware, hooks, soft delete)
+- Added database introspection and Studio web UI
+- Added data seeding with factory mode
+- Implemented query optimization and caching
 - Fixed parser to correctly handle default function arguments
 - Fixed migration manager to properly detect and apply migrations
 - Improved debug output for migration operations

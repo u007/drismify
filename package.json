@@ -16,11 +16,15 @@
     "example:client": "ts-node src/examples/client-usage.ts",
     "example:migration": "ts-node src/examples/migration-usage.ts",
     "example:extensions": "ts-node src/examples/extensions-usage.ts",
+    "example:advanced-extensions": "ts-node src/examples/advanced-extensions-usage.ts",
     "generate:client": "ts-node src/cli.ts generate-client",
     "migrate:dev": "ts-node src/cli.ts migrate dev",
     "migrate:deploy": "ts-node src/cli.ts migrate deploy",
     "migrate:reset": "ts-node src/cli.ts migrate reset",
-    "migrate:status": "ts-node src/cli.ts migrate status"
+    "migrate:status": "ts-node src/cli.ts migrate status",
+    "introspect": "ts-node src/cli.ts introspect",
+    "seed": "ts-node src/cli.ts seed",
+    "studio": "ts-node src/cli.ts studio"
   },
   "keywords": [
     "prisma",
@@ -47,6 +51,7 @@
   "dependencies": {
     "@libsql/client": "^0.7.0",
     "better-sqlite3": "^9.0.0",
-    "drizzle-orm": "^0.30.0"
+    "drizzle-orm": "^0.30.0",
+    "http": "^0.0.1-security"
   }
 }
