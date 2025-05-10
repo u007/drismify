@@ -1,0 +1,39 @@
+// This is a sample Prisma schema file for Drismify
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "drismify-client-js" // Our custom client
+  output   = "../generated/drismify-client"
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String? // Optional field
+  active Boolean @default(true)
+  posts Post[]  // Relation field (parsing of this specific type might need refinement)
+}
+
+model Post {
+  id Int @id
+  title String
+  published Boolean?
+  author User @relation(fields: [authorId], references: [id])
+  authorId Int
+}
+
+enum Role {
+  USER
+  ADMIN // Can be an admin
+  MODERATOR
+}
+
+enum PostType {
+  TEXT
+  AUDIO
+  VIDEO
+}

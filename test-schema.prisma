@@ -1,0 +1,91 @@
+// This is a test Prisma schema file with advanced features
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "drismify-client-js"
+  output   = "../generated/drismify-client"
+}
+
+// Composite type
+type Address {
+  street  String
+  city    String
+  state   String
+  zip     String
+  country String
+}
+
+// Enum types
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Model with indexes and relations
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+  profile   Profile?
+  comments  Comment[]
+
+  @@index([name, email])
+}
+
+model Profile {
+  id     Int     @id @default(autoincrement())
+  bio    String?
+  avatar String?
+  userId Int     @unique
+  user   User    @relation(fields: [userId], references: [id])
+}
+
+model Post {
+  id        Int        @id @default(autoincrement())
+  title     String
+  content   String
+  published Boolean    @default(false)
+  status    PostStatus @default(DRAFT)
+  authorId  Int
+  author    User       @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+  tags      Tag[]      @relation("PostToTag")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([authorId])
+  @@unique([title, authorId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([postId, authorId])
+}
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[] @relation("PostToTag")
+}

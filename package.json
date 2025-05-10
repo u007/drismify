@@ -1,0 +1,52 @@
+{
+  "name": "drismify",
+  "version": "0.0.1",
+  "description": "A Prisma-compatible ORM replacement",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "drismify": "ts-node src/cli.ts",
+    "build:parser": "pegjs -o src/parser/generatedParser.js src/parser/prisma.pegjs",
+    "example:adapter": "ts-node src/examples/adapter-usage.ts",
+    "example:client": "ts-node src/examples/client-usage.ts",
+    "example:migration": "ts-node src/examples/migration-usage.ts",
+    "example:extensions": "ts-node src/examples/extensions-usage.ts",
+    "generate:client": "ts-node src/cli.ts generate-client",
+    "migrate:dev": "ts-node src/cli.ts migrate dev",
+    "migrate:deploy": "ts-node src/cli.ts migrate deploy",
+    "migrate:reset": "ts-node src/cli.ts migrate reset",
+    "migrate:status": "ts-node src/cli.ts migrate status"
+  },
+  "keywords": [
+    "prisma",
+    "orm",
+    "database",
+    "sqlite",
+    "turso",
+    "libsql"
+  ],
+  "author": "Cline (AI Software Engineer)",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.0.0",
+    "drizzle-kit": "^0.31.1",
+    "jest": "^29.5.0",
+    "pegjs": "^0.10.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.7.0",
+    "better-sqlite3": "^9.0.0",
+    "drizzle-orm": "^0.30.0"
+  }
+}
