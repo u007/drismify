@@ -6,3 +6,5 @@ Use context7 when ever needed for updated framework documentation.
 - use pnpm for installation
 - use bun --bail --serial test for test
 - avoid mocks for testing, use real data
+- refer to README.md for project overview and statuses
+- refer to TODO.md for ongoing tasks

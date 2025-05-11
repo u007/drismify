@@ -1,13 +1,13 @@
 
 # Drismify
 
-Drismify is a Prisma ORM replacement supporting TursoDB and SQLite with full Prisma schema compatibility, CLI command support, and Prisma extends support. It provides advanced features for database management and performance optimization.
+Drismify is a work-in-progress Prisma ORM replacement supporting TursoDB and SQLite with Prisma schema compatibility, CLI command support, and Prisma extends support. While the core functionality is implemented, several Prisma features are still pending implementation.
 
 ## Features
 
-- **Full Prisma Schema Compatibility**: Use your existing Prisma schema files without changes
-- **SQLite and TursoDB Support**: Built-in support for SQLite and TursoDB databases
-- **Prisma CLI Command Compatibility**: Use familiar Prisma CLI commands
+- **Prisma Schema Compatibility**: Use your existing Prisma schema files with limited feature set
+- **SQLite and TursoDB Support**: Built-in support for SQLite and TursoDB databases (other databases pending)
+- **Basic Prisma CLI Command Compatibility**: Use familiar Prisma CLI commands
 - **Prisma Extends Support**: Extend your client with custom methods and behaviors
 - **No Database Shadowing**: Direct database access without an intermediary layer
 - **Schema Parser**: Parse Prisma schema files into an AST
@@ -255,3 +255,35 @@ npx drismify seed --factory --count 100
 - Fixed migration manager to properly detect and apply migrations
 - Improved debug output for migration operations
 - Fixed client generator to include Drismify export
+
+## Current Limitations and Pending Features
+
+Drismify is still in development and lacks several Prisma ORM features:
+
+### Database Support
+- Only SQLite and TursoDB are currently supported (PostgreSQL, MySQL, MongoDB, etc. pending)
+
+### Query Features
+- Advanced filtering operations (contains, startsWith, endsWith, etc.)
+- Aggregation functions (sum, avg, min, max, groupBy)
+- Full-text search capabilities
+- JSON operations and querying
+- Nested writes for related records
+
+### Schema Features
+- Support for views
+- Composite types
+- Composite/multi-field unique constraints
+- Referential actions (onDelete, onUpdate)
+- Cascade operations
+
+### Infrastructure
+- Connection pooling
+- Database sharding support
+- Read replicas support
+
+### Developer Experience
+- The interactive database Studio GUI is still under development
+- Data validation layer is incomplete
+
+Please check the TODO.md file for a comprehensive list of pending features.

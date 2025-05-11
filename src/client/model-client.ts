@@ -29,6 +29,7 @@ export class BaseModelClient<
   protected tableName: string;
   protected debug: boolean;
   protected log: ('query' | 'info' | 'warn' | 'error')[];
+  protected whereValues: any[] = [];
 
   /**
    * Model name for extension context
@@ -119,8 +120,12 @@ export class BaseModelClient<
     this.logQuery('findUnique', args);
 
     const { where } = args;
+    
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     const whereClause = this.buildWhereClause(where as Record<string, any>);
-    const values = Object.values(where as Record<string, any>);
+    const values = [...this.whereValues];
 
     const query = `
       SELECT * FROM ${this.tableName}
@@ -148,9 +153,12 @@ export class BaseModelClient<
     let whereClause = '';
     let values: any[] = [];
 
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     if (where) {
       whereClause = `WHERE ${this.buildWhereClause(where as Record<string, any>)}`;
-      values = Object.values(where as Record<string, any>);
+      values = [...this.whereValues];
     }
 
     const orderByClause = this.buildOrderByClause(orderBy);
@@ -186,9 +194,12 @@ export class BaseModelClient<
     let whereClause = '';
     let values: any[] = [];
 
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     if (where) {
       whereClause = `WHERE ${this.buildWhereClause(where as Record<string, any>)}`;
-      values = Object.values(where as Record<string, any>);
+      values = [...this.whereValues];
     }
 
     const orderByClause = this.buildOrderByClause(orderBy);
@@ -274,9 +285,12 @@ export class BaseModelClient<
     let whereClause = '';
     let whereValues: any[] = [];
 
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     if (where) {
       whereClause = `WHERE ${this.buildWhereClause(where as Record<string, any>)}`;
-      whereValues = Object.values(where as Record<string, any>);
+      whereValues = [...this.whereValues];
     }
 
     const setClause = Object.keys(data as Record<string, any>)
@@ -337,9 +351,12 @@ export class BaseModelClient<
     let whereClause = '';
     let values: any[] = [];
 
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     if (where) {
       whereClause = `WHERE ${this.buildWhereClause(where as Record<string, any>)}`;
-      values = Object.values(where as Record<string, any>);
+      values = [...this.whereValues];
     }
 
     const query = `
@@ -361,9 +378,12 @@ export class BaseModelClient<
     let whereClause = '';
     let values: any[] = [];
 
+    // Reset the whereValues before building the where clause
+    this.whereValues = [];
+    
     if (where) {
       whereClause = `WHERE ${this.buildWhereClause(where as Record<string, any>)}`;
-      values = Object.values(where as Record<string, any>);
+      values = [...this.whereValues];
     }
 
     const query = `
@@ -377,11 +397,148 @@ export class BaseModelClient<
 
   /**
    * Build a WHERE clause from a filter object
+   * Supports advanced filtering operations like:
+   * - contains, startsWith, endsWith
+   * - gt, gte, lt, lte
+   * - in, notIn
+   * - not
+   * - AND, OR
    */
   protected buildWhereClause(filter: Record<string, any>): string {
-    return Object.keys(filter)
-      .map((key, i) => `${key} = $${i + 1}`)
-      .join(' AND ');
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    // Helper function to handle nested conditions recursively
+    const processFilter = (filter: Record<string, any>, parentKey = ''): { condition: string; values: any[] } => {
+      const conditions: string[] = [];
+      const values: any[] = [];
+
+      for (const [key, value] of Object.entries(filter)) {
+        // Skip undefined values
+        if (value === undefined) continue;
+
+        // Handle logical operators (AND, OR)
+        if (key === 'AND' || key === 'OR') {
+          if (Array.isArray(value) && value.length > 0) {
+            const nestedConditions = value.map(condition => {
+              const result = processFilter(condition);
+              values.push(...result.values);
+              return `(${result.condition})`;
+            });
+            conditions.push(`(${nestedConditions.join(` ${key} `)})`);
+          }
+          continue;
+        }
+
+        // Handle NOT operator
+        if (key === 'NOT') {
+          const result = processFilter(value);
+          values.push(...result.values);
+          conditions.push(`NOT (${result.condition})`);
+          continue;
+        }
+
+        // Handle regular field conditions or nested operators
+        const fieldName = parentKey ? `${parentKey}.${key}` : key;
+        
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          // Handle nested operators for a field
+          for (const [op, opValue] of Object.entries(value)) {
+            // Skip undefined values
+            if (opValue === undefined) continue;
+
+            switch (op) {
+              case 'equals':
+                values.push(opValue);
+                conditions.push(`${fieldName} = $${values.length}`);
+                break;
+              case 'not':
+                if (opValue === null) {
+                  conditions.push(`${fieldName} IS NOT NULL`);
+                } else {
+                  values.push(opValue);
+                  conditions.push(`${fieldName} <> $${values.length}`);
+                }
+                break;
+              case 'contains':
+                values.push(`%${opValue}%`);
+                conditions.push(`${fieldName} LIKE $${values.length}`);
+                break;
+              case 'startsWith':
+                values.push(`${opValue}%`);
+                conditions.push(`${fieldName} LIKE $${values.length}`);
+                break;
+              case 'endsWith':
+                values.push(`%${opValue}`);
+                conditions.push(`${fieldName} LIKE $${values.length}`);
+                break;
+              case 'gt':
+                values.push(opValue);
+                conditions.push(`${fieldName} > $${values.length}`);
+                break;
+              case 'gte':
+                values.push(opValue);
+                conditions.push(`${fieldName} >= $${values.length}`);
+                break;
+              case 'lt':
+                values.push(opValue);
+                conditions.push(`${fieldName} < $${values.length}`);
+                break;
+              case 'lte':
+                values.push(opValue);
+                conditions.push(`${fieldName} <= $${values.length}`);
+                break;
+              case 'in':
+                if (Array.isArray(opValue) && opValue.length > 0) {
+                  const placeholders = opValue.map((_, i) => `$${values.length + i + 1}`).join(', ');
+                  values.push(...opValue);
+                  conditions.push(`${fieldName} IN (${placeholders})`);
+                } else if (Array.isArray(opValue) && opValue.length === 0) {
+                  // Empty IN clause should match nothing
+                  conditions.push('1 = 0');
+                }
+                break;
+              case 'notIn':
+                if (Array.isArray(opValue) && opValue.length > 0) {
+                  const placeholders = opValue.map((_, i) => `$${values.length + i + 1}`).join(', ');
+                  values.push(...opValue);
+                  conditions.push(`${fieldName} NOT IN (${placeholders})`);
+                } else if (Array.isArray(opValue) && opValue.length === 0) {
+                  // Empty NOT IN clause should match everything
+                  conditions.push('1 = 1');
+                }
+                break;
+              default:
+                // Handle nested objects
+                if (opValue !== null && typeof opValue === 'object') {
+                  const nestedResult = processFilter({ [op]: opValue }, fieldName);
+                  conditions.push(nestedResult.condition);
+                  values.push(...nestedResult.values);
+                }
+            }
+          }
+        } else if (value === null) {
+          // Handle null values
+          conditions.push(`${fieldName} IS NULL`);
+        } else {
+          // Handle simple equality
+          values.push(value);
+          conditions.push(`${fieldName} = $${values.length}`);
+        }
+      }
+
+      return {
+        condition: conditions.join(' AND '),
+        values,
+      };
+    };
+
+    const result = processFilter(filter);
+    
+    // Store the processed values in the class scope for query execution
+    this.whereValues = result.values;
+    
+    return result.condition || '1=1';
   }
 
   /**
