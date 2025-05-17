@@ -12,6 +12,7 @@ export * from "./types";
 export * from "./advanced";
 export * from "./aggregation";
 export * from "./internal-utils";
+export * from "./json";
 
 // Result extension utilities
 export interface ComputedFieldOptions {

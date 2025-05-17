@@ -49,9 +49,9 @@ The test suite is now passing successfully. We've fixed the connection-related e
 
 ### Query Features
 - [x] Implement advanced filtering operations (contains, startsWith, endsWith, etc.)
-- [ ] Implement aggregation functions (sum, avg, min, max, groupBy)
+- [x] Implement aggregation functions (sum, avg, min, max, groupBy)
 - [x] Add full-text search capabilities - Implemented using SQLite FTS5
-- [ ] Support for JSON operations and querying
+- [x] Support for JSON operations and querying
 - [ ] Implement nested writes for related records
 - [ ] Add support for field selection at query level
 

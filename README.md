@@ -13,6 +13,7 @@ Drismify is a work-in-progress Prisma ORM replacement supporting TursoDB and SQL
 - **Schema Parser**: Parse Prisma schema files into an AST
 - **Schema Translator**: Translate Prisma schema to Drizzle schema
 - **Migration System**: Generate and apply migrations
+- **Advanced Query Features**: Support for aggregation functions and JSON operations
 
 ## Installation
 
@@ -165,6 +166,115 @@ const deletedUsers = await softDeleteClient.user.findDeleted();
 await softDeleteClient.user.restore({ where: { id: 1 } });
 ```
 
+## JSON Operations
+
+Drismify supports Prisma-style JSON operations and querying, allowing you to work with JSON fields in your database:
+
+### Querying JSON Fields
+
+You can query JSON fields using dot notation:
+
+```typescript
+// Query by nested JSON property
+const darkThemeUsers = await prisma.user.findMany({
+  where: {
+    'metadata.preferences.theme': 'dark'
+  }
+});
+
+// Query by array element
+const admins = await prisma.user.findMany({
+  where: {
+    'metadata.roles[0]': 'admin'
+  }
+});
+```
+
+### JSON Operators
+
+Drismify supports various JSON operators:
+
+```typescript
+// Using path operator
+const usersWithNotifications = await prisma.user.findMany({
+  where: {
+    metadata: {
+      path: ['$.preferences.notifications', true]
+    }
+  }
+});
+
+// Using array_contains operator
+const adminUsers = await prisma.user.findMany({
+  where: {
+    metadata: {
+      array_contains: 'admin'
+    }
+  }
+});
+
+// Using string_contains operator
+const mayLogins = await prisma.user.findMany({
+  where: {
+    metadata: {
+      string_contains: '2023-05-15'
+    }
+  }
+});
+```
+
+### Complex JSON Filtering
+
+You can combine multiple JSON conditions:
+
+```typescript
+// Using AND with JSON fields
+const darkThemeWithNotifications = await prisma.user.findMany({
+  where: {
+    AND: [
+      { 'metadata.preferences.theme': 'dark' },
+      { 'metadata.preferences.notifications': true }
+    ]
+  }
+});
+
+// Using OR with JSON fields
+const adminOrModerators = await prisma.user.findMany({
+  where: {
+    OR: [
+      { metadata: { array_contains: 'admin' } },
+      { metadata: { array_contains: 'moderator' } }
+    ]
+  }
+});
+```
+
+### Updating JSON Fields
+
+You can update JSON fields using the `updateJson` method or dot notation:
+
+```typescript
+// Using updateJson method
+const updatedUser = await prisma.user.updateJson({
+  where: { id: 1 },
+  data: {
+    metadata: {
+      preferences: {
+        theme: 'system'
+      }
+    }
+  }
+});
+
+// Using dot notation
+const updatedUser2 = await prisma.user.update({
+  where: { id: 1 },
+  data: {
+    'metadata.preferences.notifications': false
+  }
+});
+```
+
 ## CLI Commands
 
 Drismify provides a CLI with commands similar to Prisma:
@@ -267,7 +377,6 @@ Drismify is still in development and lacks several Prisma ORM features:
 - Advanced filtering operations (contains, startsWith, endsWith, etc.)
 - Aggregation functions (sum, avg, min, max, groupBy)
 - Full-text search capabilities
-- JSON operations and querying
 - Nested writes for related records
 
 ### Schema Features
