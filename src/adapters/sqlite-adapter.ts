@@ -246,3 +246,59 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     return error;
   }
 }
+import { DatabaseAdapter, QueryResult, ConnectionOptions } from './types';
+import { Database } from 'better-sqlite3';
+import { BaseDatabaseAdapter } from './base-adapter';
+
+export class SQLiteAdapter extends BaseDatabaseAdapter {
+  private db: Database | null = null;
+
+  async enableFullTextSearch(tableName: string, columns: string[]): Promise<void> {
+    this.ensureConnected();
+    const virtualTableName = `${tableName}_fts`;
+    const columnList = columns.join(', ');
+    
+    await this.execute(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS ${virtualTableName} 
+      USING fts5(${columnList}, content=${tableName});
+    `);
+
+    // Create triggers to keep FTS table in sync
+    await this.execute(`
+      CREATE TRIGGER IF NOT EXISTS ${tableName}_ai AFTER INSERT ON ${tableName} BEGIN
+        INSERT INTO ${virtualTableName}(rowid, ${columnList}) 
+        VALUES (new.rowid, ${columns.map(c => `new.${c}`).join(', ')});
+      END;
+    `);
+
+    await this.execute(`
+      CREATE TRIGGER IF NOT EXISTS ${tableName}_ad AFTER DELETE ON ${tableName} BEGIN
+        INSERT INTO ${virtualTableName}(${virtualTableName}, rowid, ${columnList}) 
+        VALUES('delete', old.rowid, ${columns.map(c => `old.${c}`).join(', ')});
+      END;
+    `);
+
+    await this.execute(`
+      CREATE TRIGGER IF NOT EXISTS ${tableName}_au AFTER UPDATE ON ${tableName} BEGIN
+        INSERT INTO ${virtualTableName}(${virtualTableName}, rowid, ${columnList}) 
+        VALUES('delete', old.rowid, ${columns.map(c => `old.${c}`).join(', ')});
+        INSERT INTO ${virtualTableName}(rowid, ${columnList}) 
+        VALUES (new.rowid, ${columns.map(c => `new.${c}`).join(', ')});
+      END;
+    `);
+  }
+
+  async searchFullText(tableName: string, query: string): Promise<QueryResult<any>> {
+    this.ensureConnected();
+    const virtualTableName = `${tableName}_fts`;
+    
+    const result = await this.execute(`
+      SELECT t.* FROM ${tableName} t
+      INNER JOIN ${virtualTableName} f ON t.rowid = f.rowid
+      WHERE ${virtualTableName} MATCH ?
+      ORDER BY rank;
+    `, [query]);
+
+    return result;
+  }
+}
