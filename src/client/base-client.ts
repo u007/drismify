@@ -9,6 +9,7 @@ import {
 	Extension,
 	defineExtension,
 	getExtensionContext,
+	extendDrismifyWithAggregation,
 } from "../extensions";
 import { BaseClient, ClientOptions, TransactionClientOptions } from "./types";
 
@@ -179,6 +180,9 @@ export const Drismify = {
 	 */
 	getExtensionContext,
 };
+
+// Add aggregation extensions to the Drismify namespace
+extendDrismifyWithAggregation(Drismify);
 
 // Export PrismaClient as an alias for DrismifyClient
 // This allows compatibility with tests and code that expects the PrismaClient name

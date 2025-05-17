@@ -5,10 +5,12 @@
 
 import { Extension, ExtensionContext, ResultField } from "./types";
 import * as advancedExtensions from "./advanced";
+import * as aggregationExtensions from "./aggregation";
 
 // Export types
 export * from "./types";
 export * from "./advanced";
+export * from "./aggregation";
 export * from "./internal-utils";
 
 // Result extension utilities
