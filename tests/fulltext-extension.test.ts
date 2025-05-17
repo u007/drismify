@@ -1,7 +1,7 @@
 
 import { test, expect, mock } from 'bun:test';
 import { createFullTextSearchExtension } from '../src/extensions/fulltext';
-import { MockAdapter } from './fixtures/mock-adapter';
+import { MockDatabaseAdapter } from './fixtures/mock-adapter';
 
 test('fulltext search extension setup', async () => {
   const extension = createFullTextSearchExtension();
@@ -11,7 +11,7 @@ test('fulltext search extension setup', async () => {
 });
 
 test('enableFullTextSearch calls adapter correctly', async () => {
-  const mockAdapter = new MockAdapter();
+  const mockAdapter = new MockDatabaseAdapter();
   const enableSpy = mock((tableName: string, columns: string[]) => Promise.resolve());
   mockAdapter.enableFullTextSearch = enableSpy;
 
@@ -29,8 +29,8 @@ test('enableFullTextSearch calls adapter correctly', async () => {
 });
 
 test('search calls adapter correctly', async () => {
-  const mockAdapter = new MockAdapter();
-  const searchSpy = mock((tableName: string, query: string) => Promise.resolve([]));
+  const mockAdapter = new MockDatabaseAdapter();
+  const searchSpy = mock((tableName: string, query: string) => Promise.resolve({data: [], count: 0}));
   mockAdapter.searchFullText = searchSpy;
 
   const model = {
