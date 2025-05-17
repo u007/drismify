@@ -245,13 +245,6 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     }
     return error;
   }
-}
-import { DatabaseAdapter, QueryResult, ConnectionOptions } from './types';
-import { Database } from 'better-sqlite3';
-import { BaseDatabaseAdapter } from './base-adapter';
-
-export class SQLiteAdapter extends BaseDatabaseAdapter {
-  private db: Database | null = null;
 
   async enableFullTextSearch(tableName: string, columns: string[]): Promise<void> {
     this.ensureConnected();
