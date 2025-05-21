@@ -2,14 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Import types from our parser
-interface PslModelAst {
+export interface PslModelAst {
   type: 'model';
   name: string;
   fields: PslFieldAst[];
   attributes: PslAttributeAst[];
 }
 
-interface PslFieldAst {
+export interface PslFieldAst {
   name: string;
   type: {
     name: string;
@@ -19,7 +19,7 @@ interface PslFieldAst {
   attributes: PslAttributeAst[];
 }
 
-interface PslAttributeAst {
+export interface PslAttributeAst {
   name: string;
   args: any;
 }
@@ -185,7 +185,8 @@ export class PrismaClient extends DrismifyClient {
     ${models.map(model => {
       const modelName = model.name;
       const modelVarName = modelName.charAt(0).toLowerCase() + modelName.slice(1);
-      return `this.${modelVarName} = new ${modelName}(this.$getAdapter(), this.options.debug || false, this.options.log || []);`;
+      const tableName = this.toSnakeCase(modelName);
+      return `this.${modelVarName} = new ${modelName}(this, ${JSON.stringify(model)}, '${tableName}', this.options.debug || false, this.options.log || []);`;
     }).join('\n    ')}
   }
 }
@@ -321,8 +322,9 @@ ${inputTypes}
     const tableName = this.toSnakeCase(modelName);
 
     const content = `
-import { DatabaseAdapter } from '../../adapters';
+import { DatabaseAdapter, TransactionClient } from '../../adapters';
 import { BaseModelClient } from '../../client/model-client';
+import { PslModelAst } from '../index';
 import {
   ${modelName},
   ${modelName}CreateInput,
@@ -348,11 +350,14 @@ export class ${modelName} extends BaseModelClient<
   ${modelName}IncludeInput
 > {
   constructor(
-    adapter: DatabaseAdapter,
+    client: any, // Main DrismifyClient instance
+    modelAst: PslModelAst,
+    // tableName is passed from PrismaClient to super as '${tableName}'
     debug: boolean = false,
-    log: ('query' | 'info' | 'warn' | 'error')[] = []
+    log: ('query' | 'info' | 'warn' | 'error')[] = [],
+    dbInstance?: DatabaseAdapter | TransactionClient // Optional: for transactions
   ) {
-    super(adapter, '${tableName}', debug, log);
+    super(client, modelAst, '${tableName}', debug, log, dbInstance);
   }
 }
 `;
