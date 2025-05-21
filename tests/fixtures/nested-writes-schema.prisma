@@ -1,0 +1,58 @@
+// Datasource
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db" // Using dev.db relative to this schema file
+}
+
+// Generator
+generator client {
+  provider = "typescript-client" // Placeholder, actual provider name might differ
+  output   = "../../../generated/nested-writes-client" // Adjust path to be relative to project root
+}
+
+// --- Models ---
+
+// User model
+model User {
+  id      Int      @id @default(autoincrement())
+  email   String   @unique
+  name    String?
+  profile Profile?
+  posts   Post[]
+}
+
+// Profile model (one-to-one with User)
+model Profile {
+  id     Int    @id @default(autoincrement())
+  bio    String
+  user   User   @relation(fields: [userId], references: [id])
+  userId Int    @unique // Foreign key to User.id
+}
+
+// Post model (many-to-one with User, many-to-many with Category)
+model Post {
+  id         Int                 @id @default(autoincrement())
+  title      String
+  published  Boolean             @default(false)
+  author     User?               @relation(fields: [authorId], references: [id])
+  authorId   Int?                // Foreign key to User.id
+  categories CategoriesOnPosts[]
+}
+
+// Category model (many-to-many with Post)
+model Category {
+  id    Int                 @id @default(autoincrement())
+  name  String              @unique
+  posts CategoriesOnPosts[]
+}
+
+// Explicit join table for Post and Category (many-to-many)
+model CategoriesOnPosts {
+  post       Post     @relation(fields: [postId], references: [id])
+  postId     Int      // Foreign key to Post.id
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId Int      // Foreign key to Category.id
+  assignedAt DateTime @default(now())
+
+  @@id([postId, categoryId])
+}
