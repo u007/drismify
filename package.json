@@ -17,14 +17,15 @@
     "example:migration": "ts-node src/examples/migration-usage.ts",
     "example:extensions": "ts-node src/examples/extensions-usage.ts",
     "example:advanced-extensions": "ts-node src/examples/advanced-extensions-usage.ts",
-    "generate:client": "ts-node src/cli.ts generate-client",
+    "generate:client": "bun src/cli.ts generate-client",
+    "generate:test-client": "bun scripts/generate-test-client.ts",
     "migrate:dev": "ts-node src/cli.ts migrate dev",
     "migrate:deploy": "ts-node src/cli.ts migrate deploy",
     "migrate:reset": "ts-node src/cli.ts migrate reset",
     "migrate:status": "ts-node src/cli.ts migrate status",
     "introspect": "ts-node src/cli.ts introspect",
     "seed": "ts-node src/cli.ts seed",
-    "studio": "ts-node src/cli.ts studio"
+    "studio": "bun src/cli.ts studio"
   },
   "keywords": [
     "prisma",
@@ -53,5 +54,8 @@
     "better-sqlite3": "^9.0.0",
     "drizzle-orm": "^0.30.0",
     "http": "^0.0.1-security"
+  },
+  "imports": {
+    "@generated/*": "./generated/*"
   }
 }

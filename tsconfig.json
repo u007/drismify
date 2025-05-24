@@ -2,7 +2,12 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
-    "rootDir": "./src",
+    // "rootDir": "./src", // Removing rootDir as baseUrl and paths provide more flexibility
+    "baseUrl": ".", // Setting baseUrl to the project root
+    "paths": {
+      "@generated/*": ["generated/*"],
+      "@src/*": ["src/*"] // Added for consistency, can be used for src imports too
+    },
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -11,6 +16,6 @@
     "resolveJsonModule": true,
     "declaration": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*", "generated/**/*"], // Ensure all relevant dirs are included
   "exclude": ["node_modules", "dist"]
 }

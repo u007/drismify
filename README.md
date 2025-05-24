@@ -348,6 +348,10 @@ npx drismify seed --factory --count 100
 
 ## Changes
 
+- Implemented nested writes functionality for creating, connecting, disconnecting, and deleting related records
+- Added support for to-one and to-many relationships in nested operations
+- Implemented many-to-many relationship handling with explicit join tables
+- Added support for updating join records in many-to-many relationships
 - Replaced all mock tests with actual implementations in the Prisma Extends Support test suite
 - Fixed test cases to properly work with model extensions, result extensions, and async methods
 - Added comprehensive tests for $allModels extensions and multiple extension combinations
@@ -379,7 +383,6 @@ Drismify is still in development and lacks several Prisma ORM features:
 - Advanced filtering operations (contains, startsWith, endsWith, etc.)
 - Aggregation functions (sum, avg, min, max, groupBy)
 - Full-text search capabilities
-- Nested writes for related records
 
 ### Schema Features
 - Support for views

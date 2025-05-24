@@ -52,7 +52,7 @@ The test suite is now passing successfully. We've fixed the connection-related e
 - [x] Implement aggregation functions (sum, avg, min, max, groupBy)
 - [x] Add full-text search capabilities - Implemented using SQLite FTS5
 - [x] Support for JSON operations and querying
-- [ ] Implement nested writes for related records
+- [x] Implement nested writes for related records - Added support for create, connect, disconnect, and delete operations
 - [ ] Add support for field selection at query level
 
 ### Schema Features
@@ -127,12 +127,20 @@ All critical tasks have been completed. All important tasks except for transacti
    - Add more realistic real-world test cases
    - Test extension combinations and potential conflicts
 
-4. 🔲 Implement missing Prisma functionality:
+4. ✅ Implemented nested writes functionality:
+   - Added support for creating related records during parent creation/update
+   - Implemented connecting existing records in to-one and to-many relationships
+   - Added support for disconnecting related records
+   - Implemented deleting related records during parent updates
+   - Added support for many-to-many relationships with explicit join tables
+   - Implemented updating join records in many-to-many relationships
+
+5. 🔲 Implement remaining Prisma functionality:
    - Add support for more database providers
-   - Implement advanced filtering and aggregation operations
    - Add support for complex schema features
    - Build interactive database Studio
    - Add performance optimization features
+   - Implement field selection at query level
 
 ## Architecture Considerations
 

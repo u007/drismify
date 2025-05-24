@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { ClientGenerator } from '../generator/client-generator';
 
 /**
@@ -75,19 +75,35 @@ export async function generateClient(options: GenerateOptions = {}): Promise<voi
   const ast = parser.parse(schemaContent);
 
   // Extract generator from the AST
-  const generatorNode = ast.find((node: any) => node.type === 'generator');
+  const generatorNode = ast.find((node: { type: string; [key: string]: unknown }) => node.type === 'generator') as { type: string; assignments?: { output?: string } } | undefined;
 
   // Determine output directory
-  let clientOutputDir = outputDir;
-  if (!clientOutputDir && generatorNode && generatorNode.assignments && generatorNode.assignments.output) {
-    clientOutputDir = generatorNode.assignments.output;
+  let clientOutputDir = outputDir; // outputDir is from GenerateOptions, potentially passed by CLI
+  if (!clientOutputDir && generatorNode?.assignments?.output) {
+    // If outputDir is not provided via options, use the one from the schema's generator block.
+    // This path is relative to the schema file, so resolve it.
+    clientOutputDir = path.resolve(path.dirname(schemaPath), generatorNode.assignments.output);
   }
 
   if (!clientOutputDir) {
+    // Fallback if no outputDir is specified in options or schema
     clientOutputDir = path.join(path.dirname(schemaPath), 'generated', 'client');
+    // This also needs to be resolved if schemaPath can be relative itself,
+    // but schemaPath is usually resolved to absolute by the calling CLI.
+    // For safety, ensure it's absolute if derived:
+    clientOutputDir = path.resolve(clientOutputDir);
+  }
+  
+  // Ensure clientOutputDir is absolute if it's still relative for some reason
+  // (though path.resolve above should handle most cases)
+  if (!path.isAbsolute(clientOutputDir)) {
+    clientOutputDir = path.resolve(process.cwd(), clientOutputDir);
   }
 
+
   // Create the output directory if it doesn't exist
+  // fs.mkdirSync needs an absolute path or path relative to cwd.
+  // clientOutputDir should be absolute by now.
   if (!fs.existsSync(clientOutputDir)) {
     fs.mkdirSync(clientOutputDir, { recursive: true });
   }
@@ -114,7 +130,7 @@ export async function generateClient(options: GenerateOptions = {}): Promise<voi
 
     fs.watch(schemaPath, async (eventType) => {
       if (eventType === 'change') {
-        console.log(`Schema file changed, regenerating client...`);
+        console.log('Schema file changed, regenerating client...');
 
         try {
           await clientGenerator.generateFromSchemaFile(schemaPath);
