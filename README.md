@@ -348,6 +348,9 @@ npx drismify seed --factory --count 100
 
 ## Changes
 
+- Replaced all mock tests with actual implementations in the Prisma Extends Support test suite
+- Fixed test cases to properly work with model extensions, result extensions, and async methods
+- Added comprehensive tests for $allModels extensions and multiple extension combinations
 - Fixed the missing `PrismaClient` export in the base-client.ts file by adding it as an alias for `DrismifyClient`
 - Enhanced the extension handling system to properly process middleware extensions
 - Improved the MockPrismaClient implementation in tests to properly handle connection status and middleware
@@ -361,8 +364,7 @@ npx drismify seed --factory --count 100
 - Added database introspection and Studio web UI
 - Added data seeding with factory mode
 - Implemented query optimization and caching
-- Fixed parser to correctly handle default function arguments
-- Fixed migration manager to properly detect and apply migrations
+- Fixed parser to correctly detect and apply migrations
 - Improved debug output for migration operations
 - Fixed client generator to include Drismify export
 
