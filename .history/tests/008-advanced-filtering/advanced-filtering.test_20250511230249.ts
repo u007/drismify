@@ -53,19 +53,6 @@ interface UserOrderByInput {
   createdAt?: 'asc' | 'desc';
 }
 
-// Mock client for testing
-class MockClient {
-  private adapter: MockDatabaseAdapter;
-  
-  constructor(adapter: MockDatabaseAdapter) {
-    this.adapter = adapter;
-  }
-  
-  $getAdapter(): MockDatabaseAdapter {
-    return this.adapter;
-  }
-}
-
 // Mock UserModelClient for testing
 class UserModelClient extends BaseModelClient<
   User,
@@ -78,14 +65,7 @@ class UserModelClient extends BaseModelClient<
   any
 > {
   constructor(adapter: MockDatabaseAdapter) {
-    const mockClient = new MockClient(adapter);
-    const mockModelAst = {
-      type: 'model' as const,
-      name: 'User',
-      fields: [],
-      attributes: []
-    };
-    super(mockClient, mockModelAst, 'users', true);
+    super(adapter, 'users', true);
   }
 }
 
