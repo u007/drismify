@@ -24,8 +24,57 @@ class SQLiteTransactionClient implements TransactionClient {
         result = stmt.all(params || []);
       } else {
         // For non-SELECT queries (INSERT, UPDATE, DELETE, CREATE, etc.)
-        const stmt = this.tx.query(query);
-        stmt.run(params || []);
+        // For SQLite, we need to be careful with parameter binding
+        // The query might use named parameters ($1, $2) or question marks (?)
+        if (params && params.length > 0) {
+          // For queries with question marks, we can use the prepare/run pattern
+          if (query.includes('?')) {
+            try {
+              const stmt = this.tx.prepare(query);
+              stmt.run(...params);
+            } catch (error) {
+              console.error('Error executing prepared statement:', error);
+              console.error('Query:', query);
+              console.error('Params:', params);
+              throw error;
+            }
+          } else {
+            // For queries with $ parameters, we need to handle them differently
+            // Replace each $n with ? and reorder params if needed
+            let modifiedQuery = query;
+            const paramRegex = /\$(\d+)/g;
+            const paramIndices: number[] = [];
+            let match;
+            
+            // Extract all parameter indices
+            while ((match = paramRegex.exec(query)) !== null) {
+              paramIndices.push(parseInt(match[1], 10));
+            }
+            
+            // Replace $n with ? in the query
+            modifiedQuery = query.replace(paramRegex, '?');
+            
+            // Reorder params based on the indices if needed
+            const orderedParams = paramIndices.length > 0 
+              ? paramIndices.map(idx => params[idx - 1]) 
+              : params;
+            
+            try {
+              const stmt = this.tx.prepare(modifiedQuery);
+              stmt.run(...orderedParams);
+            } catch (error) {
+              console.error('Error executing prepared statement with $ params:', error);
+              console.error('Original query:', query);
+              console.error('Modified query:', modifiedQuery);
+              console.error('Params:', params);
+              console.error('Ordered params:', orderedParams);
+              throw error;
+            }
+          }
+        } else {
+          // If no parameters, just run the query directly
+          this.tx.run(query);
+        }
         // For non-SELECT queries, return an empty array as data
         return { data: [] as T[] };
       }

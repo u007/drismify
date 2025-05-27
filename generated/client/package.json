@@ -1,0 +1,11 @@
+{
+  "name": "drismify-client",
+  "version": "0.0.1",
+  "description": "Generated Drismify client",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "@libsql/client": "^0.7.0",
+    "better-sqlite3": "^9.0.0"
+  }
+}

@@ -14,6 +14,7 @@ Drismify is a work-in-progress Prisma ORM replacement supporting TursoDB and SQL
 - **Schema Translator**: Translate Prisma schema to Drizzle schema
 - **Migration System**: Generate and apply migrations
 - **Advanced Query Features**: Support for aggregation functions and JSON operations
+- **Field Selection**: Select specific fields in queries to optimize data transfer and improve performance
 
 ## Installation
 

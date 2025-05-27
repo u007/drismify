@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseAdapter } from '../adapters';
-import { SqliteAdapter } from '../adapters/sqlite-adapter';
+import { SQLiteAdapter } from '../adapters/sqlite-adapter';
 import { TursoAdapter } from '../adapters/turso-adapter';
 
 /**
@@ -65,7 +65,7 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
   let adapter: DatabaseAdapter;
   
   if (provider === 'sqlite') {
-    adapter = new SqliteAdapter({ filename: url });
+    adapter = new SQLiteAdapter({ filename: url });
   } else if (provider === 'turso') {
     adapter = new TursoAdapter({ url });
   } else {
