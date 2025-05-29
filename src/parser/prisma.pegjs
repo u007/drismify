@@ -97,7 +97,7 @@ Schema = _ elements:(Block / CommentLine)* _ {
   return elements.filter(e => e !== null && e.type !== 'comment');
 }
 
-Block = DatasourceBlock / GeneratorBlock / ModelBlock / EnumBlock / TypeBlock
+Block = DatasourceBlock / GeneratorBlock / ModelBlock / EnumBlock / TypeBlock / ViewBlock
 
 // Datasource Block
 DatasourceBlock = _ "datasource" _ identifier:Identifier _ "{" _ assignments:Assignment* _ "}" _ {
@@ -206,6 +206,16 @@ EnumValueDefinition = _ valueName:Identifier _ { return valueName; }
 // Type Block (for composite types)
 TypeBlock = _ "type" _ typeName:Identifier _ "{" _ fields:Field* _ "}" _ {
   return { type: "type", name: typeName, fields: fields.filter(f => f !== null) };
+}
+
+// View Block (for database views)
+ViewBlock = _ "view" _ viewName:Identifier _ "{" _ fields:Field* _ viewAttributes:ModelAttribute* _ "}" _ {
+  return {
+    type: "view",
+    name: viewName,
+    fields: fields.filter(f => f !== null),
+    attributes: viewAttributes.filter(a => a !== null)
+  };
 }
 
 // Rules for parsing content of @relation attribute arguments

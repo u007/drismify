@@ -47,6 +47,13 @@ interface PslTypeAst {
   fields: PslFieldAst[];
 }
 
+interface PslViewAst {
+  type: 'view';
+  name: string; // PascalCase
+  fields: PslFieldAst[];
+  attributes: PslAttributeAst[]; // View-level attributes like @@unique, @@id
+}
+
 interface PslDatasourceAst {
   type: 'datasource';
   name: string;
@@ -64,6 +71,7 @@ type PslAstNode =
   | PslModelAst
   | PslEnumAst
   | PslTypeAst
+  | PslViewAst
   | PslDatasourceAst
   | PslGeneratorAst;
 

@@ -53,10 +53,10 @@ The test suite is now passing successfully. We've fixed the connection-related e
 - [x] Add full-text search capabilities - Implemented using SQLite FTS5
 - [x] Support for JSON operations and querying
 - [x] Implement nested writes for related records - Added support for create, connect, disconnect, and delete operations
-- [ ] Add support for field selection at query level
+- [x] Add support for field selection at query level
 
 ### Schema Features
-- [ ] Add support for views
+- [x] Add support for views - Basic view parsing and schema definition support implemented
 - [ ] Implement composite types
 - [ ] Add support for composite/multi-field unique constraints
 - [ ] Add support for referential actions (onDelete, onUpdate)

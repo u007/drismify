@@ -36,7 +36,14 @@ interface PslTypeAst {
   fields: PslFieldAst[];
 }
 
-type PslAstNode = PslModelAst | PslEnumAst | PslTypeAst | { type: string; [key: string]: any };
+export interface PslViewAst {
+  type: 'view';
+  name: string;
+  fields: PslFieldAst[];
+  attributes: PslAttributeAst[];
+}
+
+type PslAstNode = PslModelAst | PslEnumAst | PslTypeAst | PslViewAst | { type: string; [key: string]: any };
 
 /**
  * Client generator options
@@ -94,14 +101,15 @@ export class ClientGenerator {
       fs.mkdirSync(this.options.outputDir, { recursive: true });
     }
 
-    // Extract models, enums, and types from the AST
+    // Extract models, enums, types, and views from the AST
     const models = ast.filter(node => node.type === 'model') as PslModelAst[];
     const enums = ast.filter(node => node.type === 'enum') as PslEnumAst[];
     const types = ast.filter(node => node.type === 'type') as PslTypeAst[];
+    const views = ast.filter(node => node.type === 'view') as PslViewAst[];
     const datasource = ast.find(node => node.type === 'datasource');
 
     // Generate the client
-    await this.generateClient(models, enums, types, datasource);
+    await this.generateClient(models, enums, types, views, datasource);
   }
 
   /**
@@ -126,19 +134,25 @@ export class ClientGenerator {
     models: PslModelAst[],
     enums: PslEnumAst[],
     types: PslTypeAst[],
+    views: PslViewAst[],
     datasource: any
   ): Promise<void> {
     // Generate the index file
-    await this.generateIndexFile(models);
+    await this.generateIndexFile(models, views);
 
     // Generate the types file
     if (this.options.generateTypes) {
-      await this.generateTypesFile(models, enums, types);
+      await this.generateTypesFile(models, enums, types, views);
     }
 
     // Generate model files
     for (const model of models) {
       await this.generateModelFile(model, models, enums, types);
+    }
+
+    // Generate view files
+    for (const view of views) {
+      await this.generateViewFile(view, models, enums, types, views);
     }
 
     // Generate package.json
@@ -155,18 +169,26 @@ export class ClientGenerator {
   /**
    * Generate the index file
    */
-  private async generateIndexFile(models: PslModelAst[]): Promise<void> {
+  private async generateIndexFile(models: PslModelAst[], views: PslViewAst[]): Promise<void> {
     const modelImports = models.map(model => {
       const modelName = model.name;
       return `import { ${modelName} } from './models/${modelName.toLowerCase()}';`;
     }).join('\n');
 
+    const viewImports = views.map(view => {
+      const viewName = view.name;
+      return `import { ${viewName} } from './views/${viewName.toLowerCase()}';`;
+    }).join('\n');
+
     const modelExports = models.map(model => model.name).join(', ');
+    const viewExports = views.map(view => view.name).join(', ');
+    const allExports = [modelExports, viewExports].filter(Boolean).join(', ');
 
     const content = `
 import { DrismifyClient, Drismify } from '../../client/base-client';
 import { ClientOptions } from '../../client/types';
 ${modelImports}
+${viewImports}
 
 /**
  * Drismify Client
@@ -178,6 +200,11 @@ export class PrismaClient extends DrismifyClient {
     const modelVarName = modelName.charAt(0).toLowerCase() + modelName.slice(1);
     return `public readonly ${modelVarName}: ${modelName};`;
   }).join('\n  ')}
+  ${views.map(view => {
+    const viewName = view.name;
+    const viewVarName = viewName.charAt(0).toLowerCase() + viewName.slice(1);
+    return `public readonly ${viewVarName}: ${viewName};`;
+  }).join('\n  ')}
 
   constructor(options: ClientOptions = { datasources: { db: {} } }) {
     super(options);
@@ -188,10 +215,16 @@ export class PrismaClient extends DrismifyClient {
       const tableName = this.toSnakeCase(modelName);
       return `this.${modelVarName} = new ${modelName}(this, ${JSON.stringify(model)}, '${tableName}', this.options.debug || false, this.options.log || []);`;
     }).join('\n    ')}
+    ${views.map(view => {
+      const viewName = view.name;
+      const viewVarName = viewName.charAt(0).toLowerCase() + viewName.slice(1);
+      const tableName = this.toSnakeCase(viewName);
+      return `this.${viewVarName} = new ${viewName}(this, ${JSON.stringify(view)}, '${tableName}', this.options.debug || false, this.options.log || []);`;
+    }).join('\n    ')}
   }
 }
 
-export { ${modelExports}, Drismify };
+export { ${allExports}, Drismify };
 export * from './types';
 `;
 
@@ -204,7 +237,8 @@ export * from './types';
   private async generateTypesFile(
     models: PslModelAst[],
     enums: PslEnumAst[],
-    types: PslTypeAst[]
+    types: PslTypeAst[],
+    views: PslViewAst[]
   ): Promise<void> {
     const enumTypes = enums.map(enumDef => {
       const enumName = enumDef.name;
@@ -298,12 +332,74 @@ ${model.fields
 `;
     }).join('\n');
 
+    // Generate view types (similar to models but read-only)
+    const viewTypes = views.map(view => {
+      const viewName = view.name;
+      const fields = view.fields.map(field => {
+        const fieldName = field.name;
+        const fieldType = this.mapFieldType(field.type, enums, types);
+        const isOptional = field.type.optional ? '?' : '';
+        return `  ${fieldName}${isOptional}: ${fieldType};`;
+      }).join('\n');
+
+      return `export type ${viewName} = {\n${fields}\n};`;
+    }).join('\n\n');
+
+    // Generate view input types (read-only, so no create/update)
+    const viewInputTypes = views.map(view => {
+      const viewName = view.name;
+
+      // Generate where input type
+      const whereFields = view.fields.map(field => {
+        const fieldName = field.name;
+        const fieldType = this.mapFieldType(field.type, enums, types);
+        return `  ${fieldName}?: ${fieldType};`;
+      }).join('\n');
+
+      // Generate where unique input type
+      const uniqueFields = view.fields
+        .filter(field => field.attributes.some(attr => attr.name === 'id' || attr.name === 'unique'))
+        .map(field => {
+          const fieldName = field.name;
+          const fieldType = this.mapFieldType(field.type, enums, types);
+          return `  ${fieldName}?: ${fieldType};`;
+        }).join('\n');
+
+      // Generate order by input type
+      const orderByFields = view.fields.map(field => {
+        const fieldName = field.name;
+        return `  ${fieldName}?: 'asc' | 'desc';`;
+      }).join('\n');
+
+      return `
+export type ${viewName}WhereInput = {
+${whereFields}
+};
+
+export type ${viewName}WhereUniqueInput = {
+${uniqueFields}
+};
+
+export type ${viewName}OrderByInput = {
+${orderByFields}
+};
+
+export type ${viewName}SelectInput = {
+${view.fields.map(field => `  ${field.name}?: boolean;`).join('\n')}
+};
+`;
+    }).join('\n');
+
     const content = `
 ${enumTypes}
 
 ${modelTypes}
 
+${viewTypes}
+
 ${inputTypes}
+
+${viewInputTypes}
 `;
 
     fs.writeFileSync(path.join(this.options.outputDir, 'types.ts'), content);
@@ -369,6 +465,63 @@ export class ${modelName} extends BaseModelClient<
     }
 
     fs.writeFileSync(path.join(modelsDir, `${modelName.toLowerCase()}.ts`), content);
+  }
+
+  /**
+   * Generate a view file
+   */
+  private async generateViewFile(
+    view: PslViewAst,
+    models: PslModelAst[],
+    enums: PslEnumAst[],
+    types: PslTypeAst[],
+    views: PslViewAst[]
+  ): Promise<void> {
+    const viewName = view.name;
+    const tableName = this.toSnakeCase(viewName);
+
+    const content = `
+import { DatabaseAdapter, TransactionClient } from '../../adapters';
+import { BaseViewClient } from '../../client/view-client';
+import { PslViewAst } from '../index';
+import {
+  ${viewName},
+  ${viewName}WhereInput,
+  ${viewName}WhereUniqueInput,
+  ${viewName}OrderByInput,
+  ${viewName}SelectInput
+} from '../types';
+
+/**
+ * ${viewName} view client
+ */
+export class ${viewName} extends BaseViewClient<
+  ${viewName},
+  ${viewName}WhereInput,
+  ${viewName}WhereUniqueInput,
+  ${viewName}OrderByInput,
+  ${viewName}SelectInput
+> {
+  constructor(
+    client: any, // Main DrismifyClient instance
+    viewAst: PslViewAst,
+    // tableName is passed from PrismaClient to super as '${tableName}'
+    debug: boolean = false,
+    log: ('query' | 'info' | 'warn' | 'error')[] = [],
+    dbInstance?: DatabaseAdapter | TransactionClient // Optional: for transactions
+  ) {
+    super(client, viewAst, '${tableName}', debug, log, dbInstance);
+  }
+}
+`;
+
+    // Create the views directory if it doesn't exist
+    const viewsDir = path.join(this.options.outputDir, 'views');
+    if (!fs.existsSync(viewsDir)) {
+      fs.mkdirSync(viewsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(viewsDir, `${viewName.toLowerCase()}.ts`), content);
   }
 
   /**

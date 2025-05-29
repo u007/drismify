@@ -306,6 +306,62 @@ npx drismify seed [schema-path] [seed-script]
 npx drismify studio [schema-path] [--port 5555]
 ```
 
+## Database Views Support
+
+Drismify supports database views for read-only queries that combine data from multiple tables:
+
+```prisma
+// Define a view in your schema
+view UserInfo {
+  id    Int    @unique
+  email String
+  name  String
+  bio   String
+}
+
+view PublishedPosts {
+  id          Int      @unique
+  title       String
+  content     String
+  authorName  String
+  authorEmail String
+  createdAt   DateTime
+}
+```
+
+Create the corresponding SQL views in your database:
+
+```sql
+CREATE VIEW user_info AS
+SELECT
+  u.id,
+  u.email,
+  u.name,
+  p.bio
+FROM user u
+LEFT JOIN profile p ON u.id = p.user_id;
+
+CREATE VIEW published_posts AS
+SELECT
+  p.id,
+  p.title,
+  p.content,
+  u.name as author_name,
+  u.email as author_email,
+  p.created_at
+FROM post p
+JOIN user u ON p.author_id = u.id
+WHERE p.published = TRUE;
+```
+
+Query views using raw SQL (generated view clients coming soon):
+
+```typescript
+// Query view data
+const userInfo = await prisma.$queryRaw('SELECT * FROM user_info');
+const publishedPosts = await prisma.$queryRaw('SELECT * FROM published_posts WHERE author_name = ?', ['Alice']);
+```
+
 ## Advanced Features
 
 ### Database Studio
@@ -349,6 +405,7 @@ npx drismify seed --factory --count 100
 
 ## Changes
 
+- Added support for database views - Schema parsing, type generation, and basic view functionality implemented
 - Implemented nested writes functionality for creating, connecting, disconnecting, and deleting related records
 - Added support for to-one and to-many relationships in nested operations
 - Implemented many-to-many relationship handling with explicit join tables
@@ -386,7 +443,6 @@ Drismify is still in development and lacks several Prisma ORM features:
 - Full-text search capabilities
 
 ### Schema Features
-- Support for views
 - Composite types
 - Composite/multi-field unique constraints
 - Referential actions (onDelete, onUpdate)
