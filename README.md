@@ -476,6 +476,91 @@ await prisma.category.create({ data: { name: 'Science', parentId: null } });
 await prisma.category.create({ data: { name: 'Technology', parentId: null } }); // This is allowed in SQLite
 ```
 
+## Referential Actions Support
+
+Drismify provides full support for referential actions (foreign key constraints) to maintain data integrity and define cascading behaviors when parent records are updated or deleted.
+
+### Supported Referential Actions
+
+- **Cascade**: Automatically delete/update child records when parent is deleted/updated
+- **Restrict**: Prevent deletion/update of parent if child records exist
+- **SetNull**: Set foreign key to NULL when parent is deleted/updated
+- **SetDefault**: Set foreign key to default value when parent is deleted/updated
+- **NoAction**: No action taken (database default behavior)
+
+### Using Referential Actions
+
+```prisma
+model User {
+  id       Int       @id @default(autoincrement())
+  email    String    @unique
+  posts    Post[]
+  comments Comment[]
+  profile  Profile?
+}
+
+// One-to-one with cascade delete
+model Profile {
+  id     Int    @id @default(autoincrement())
+  bio    String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int    @unique
+}
+
+// Many-to-one with cascade delete and restrict update
+model Post {
+  id        Int       @id @default(autoincrement())
+  title     String
+  content   String?
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  authorId  Int
+  comments  Comment[]
+}
+
+// Set null on delete, set default on update
+model Comment {
+  id       Int    @id @default(autoincrement())
+  content  String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: SetNull)
+  postId   Int?
+  author   User   @relation(fields: [authorId], references: [id], onDelete: SetDefault, onUpdate: NoAction)
+  authorId Int    @default(1) // Default to system user
+}
+```
+
+### Generated SQL
+
+Drismify automatically generates the appropriate SQL foreign key constraints:
+
+```sql
+-- Profile table with CASCADE delete
+CREATE TABLE "profile" (
+  id INTEGER PRIMARY KEY,
+  bio TEXT NOT NULL,
+  user_id INTEGER UNIQUE NOT NULL,
+  FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE
+);
+
+-- Post table with CASCADE delete and RESTRICT update
+CREATE TABLE "post" (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT,
+  author_id INTEGER NOT NULL,
+  FOREIGN KEY ("author_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE RESTRICT
+);
+
+-- Comment table with SET NULL and SET DEFAULT
+CREATE TABLE "comment" (
+  id INTEGER PRIMARY KEY,
+  content TEXT NOT NULL,
+  post_id INTEGER,
+  author_id INTEGER DEFAULT 1,
+  FOREIGN KEY ("post_id") REFERENCES "post"("id") ON DELETE SET NULL,
+  FOREIGN KEY ("author_id") REFERENCES "user"("id") ON DELETE SET DEFAULT ON UPDATE NO ACTION
+);
+```
+
 ## Database Views Support
 
 Drismify supports database views for read-only queries that combine data from multiple tables:
@@ -600,6 +685,9 @@ npx drismify seed --factory --count 100
 - Fixed parser to correctly detect and apply migrations
 - Improved debug output for migration operations
 - Fixed client generator to include Drismify export
+- Added full support for referential actions (onDelete, onUpdate) with all five action types: Cascade, Restrict, SetNull, SetDefault, and NoAction
+- Implemented referential actions in schema parser, translator, and migration system
+- Added comprehensive test suite for referential actions functionality
 
 ## Current Limitations and Pending Features
 
@@ -615,8 +703,8 @@ Drismify is still in development and lacks several Prisma ORM features:
 
 ### Schema Features
 - ✅ Composite/multi-field unique constraints - Full support for both single-field (@unique) and multi-field (@@unique) unique constraints
-- Referential actions (onDelete, onUpdate)
-- Cascade operations
+- ✅ Referential actions (onDelete, onUpdate) - Full support for Cascade, Restrict, SetNull, SetDefault, and NoAction
+- ✅ Cascade operations - Implemented through referential actions
 
 ### Infrastructure
 - Connection pooling

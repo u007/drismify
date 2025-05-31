@@ -13,6 +13,24 @@ function pascalToCamelCase(str: string): string {
   return str.charAt(0).toLowerCase() + str.slice(1);
 }
 
+// Helper function to map Prisma referential actions to Drizzle format
+function mapPrismaActionToDrizzle(action: string): string {
+  switch (action) {
+    case 'Cascade':
+      return 'cascade';
+    case 'Restrict':
+      return 'restrict';
+    case 'SetNull':
+      return 'set null';
+    case 'SetDefault':
+      return 'set default';
+    case 'NoAction':
+      return 'no action';
+    default:
+      return action.toLowerCase();
+  }
+}
+
 interface PslAttributeAst {
   name: string;
   args: any;
@@ -170,10 +188,10 @@ export function translatePslToDrizzleSchema(pslAst: PslAstNode[]): string {
 
           const drizzleRelationActions: { onDelete?: string; onUpdate?: string } = {};
           if (pslRelationArgs.onDelete) {
-            drizzleRelationActions.onDelete = pslRelationArgs.onDelete.toLowerCase().replace('_', ' ');
+            drizzleRelationActions.onDelete = mapPrismaActionToDrizzle(pslRelationArgs.onDelete);
           }
           if (pslRelationArgs.onUpdate) {
-            drizzleRelationActions.onUpdate = pslRelationArgs.onUpdate.toLowerCase().replace('_', ' ');
+            drizzleRelationActions.onUpdate = mapPrismaActionToDrizzle(pslRelationArgs.onUpdate);
           }
 
           let optionsString = "";

@@ -185,8 +185,8 @@ export class ClientGenerator {
     const allExports = [modelExports, viewExports].filter(Boolean).join(', ');
 
     const content = `
-import { DrismifyClient, Drismify } from '../../client/base-client';
-import { ClientOptions } from '../../client/types';
+import { DrismifyClient, Drismify } from '../../src/client/base-client';
+import { ClientOptions } from '../../src/client/types';
 ${modelImports}
 ${viewImports}
 
@@ -433,8 +433,8 @@ ${viewInputTypes}
     const tableName = this.toSnakeCase(modelName);
 
     const content = `
-import { DatabaseAdapter, TransactionClient } from '../../adapters';
-import { BaseModelClient } from '../../client/model-client';
+import { DatabaseAdapter, TransactionClient } from '../../src/adapters';
+import { BaseModelClient } from '../../src/client/model-client';
 import { PslModelAst } from '../index';
 import {
   ${modelName},
@@ -496,8 +496,8 @@ export class ${modelName} extends BaseModelClient<
     const tableName = this.toSnakeCase(viewName);
 
     const content = `
-import { DatabaseAdapter, TransactionClient } from '../../adapters';
-import { BaseViewClient } from '../../client/view-client';
+import { DatabaseAdapter, TransactionClient } from '../../src/adapters';
+import { BaseViewClient } from '../../src/client/view-client';
 import { PslViewAst } from '../index';
 import {
   ${viewName},

@@ -21,8 +21,13 @@ describe('Prisma Client Nested Writes', () => {
       // We've already manually created the client, so we don't need to generate it here
       console.log('Using pre-generated client for tests');
       
-      // Check if the main client file exists
-      const expectedClientPath = path.resolve(__dirname, '..', 'generated', 'nested-writes-client', 'index.ts');
+      // Check if the main client file exists (source .ts file)
+      // Determine project root based on whether we're running from dist/tests or tests
+      const isInDist = __dirname.includes('/dist/tests');
+      const projectRoot = isInDist
+        ? path.resolve(__dirname, '..', '..') // From dist/tests, go up two levels
+        : path.resolve(__dirname, '..'); // From tests, go up one level
+      const expectedClientPath = path.resolve(projectRoot, 'generated', 'nested-writes-client', 'index.ts');
       if (!fs.existsSync(expectedClientPath)) {
         console.error(`Client file not found at: ${expectedClientPath}`);
         throw new Error(`Client file not found: ${expectedClientPath}`);

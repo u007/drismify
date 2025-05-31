@@ -171,8 +171,18 @@ export class SchemaDiffer {
         const fieldName = relationAttr.args.fields[0];
         const referencedField = relationAttr.args.references[0];
 
-        // Add foreign key constraint
-        foreignKeys.push(`FOREIGN KEY ("${this.toSnakeCase(fieldName)}") REFERENCES "${referencedTable}"("${this.toSnakeCase(referencedField)}")`);
+        // Build foreign key constraint with referential actions
+        let foreignKeyConstraint = `FOREIGN KEY ("${this.toSnakeCase(fieldName)}") REFERENCES "${referencedTable}"("${this.toSnakeCase(referencedField)}")`;
+
+        // Add referential actions if specified
+        if (relationAttr.args.onDelete) {
+          foreignKeyConstraint += ` ON DELETE ${this.mapReferentialAction(relationAttr.args.onDelete)}`;
+        }
+        if (relationAttr.args.onUpdate) {
+          foreignKeyConstraint += ` ON UPDATE ${this.mapReferentialAction(relationAttr.args.onUpdate)}`;
+        }
+
+        foreignKeys.push(foreignKeyConstraint);
       }
 
       // Check for default value
@@ -405,5 +415,26 @@ export class SchemaDiffer {
     return str
       .replace(/(?:^|\.?)([A-Z])/g, (_, char) => `_${char.toLowerCase()}`)
       .replace(/^_/, '');
+  }
+
+  /**
+   * Map Prisma referential action to SQL referential action
+   */
+  private mapReferentialAction(action: string): string {
+    switch (action) {
+      case 'Cascade':
+        return 'CASCADE';
+      case 'Restrict':
+        return 'RESTRICT';
+      case 'SetNull':
+        return 'SET NULL';
+      case 'SetDefault':
+        return 'SET DEFAULT';
+      case 'NoAction':
+        return 'NO ACTION';
+      default:
+        // Default to RESTRICT if unknown action
+        return 'RESTRICT';
+    }
   }
 }

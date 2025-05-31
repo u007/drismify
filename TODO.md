@@ -59,8 +59,8 @@ The test suite is now passing successfully. We've fixed the connection-related e
 - [x] Add support for views - Basic view parsing and schema definition support implemented
 - [x] Implement composite types - Full support for composite types including parsing, schema translation, client generation, and JSON storage
 - [x] Add support for composite/multi-field unique constraints
-- [ ] Add support for referential actions (onDelete, onUpdate)
-- [ ] Implement cascade operations
+- [x] Add support for referential actions (onDelete, onUpdate) - Full support for Cascade, Restrict, SetNull, SetDefault, and NoAction
+- [x] Implement cascade operations - Implemented through referential actions
 - [ ] Add support for database-level constraints
 
 ### Performance & Infrastructure

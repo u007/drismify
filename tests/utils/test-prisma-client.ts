@@ -3,8 +3,20 @@ import type { DatabaseAdapter } from '../../src/adapters';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Path to the test schema
-const TEST_SCHEMA_PATH = path.resolve(__dirname, '../fixtures/schema.prisma');
+// Path to the test schema - resolve from project root to work in both src and dist
+const findProjectRoot = (): string => {
+  let currentDir = __dirname;
+  while (currentDir !== path.dirname(currentDir)) {
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      return currentDir;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  throw new Error('Could not find project root');
+};
+
+const PROJECT_ROOT = findProjectRoot();
+const TEST_SCHEMA_PATH = path.join(PROJECT_ROOT, 'tests', 'fixtures', 'schema.prisma');
 
 // In-memory SQLite database for testing
 const TEST_DB_URL = 'file::memory:?cache=shared';
