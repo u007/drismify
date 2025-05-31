@@ -15,6 +15,8 @@
         return processIndexArgs(rawArgs);
       case 'default':
         return processDefaultArgs(rawArgs);
+      case 'check':
+        return processCheckArgs(rawArgs);
       default:
         return rawArgs;
     }
@@ -89,6 +91,31 @@
 
     // Handle other default values
     return rawArgs;
+  }
+
+  // Process @@check attribute arguments
+  function processCheckArgs(rawArgs) {
+    if (typeof rawArgs !== 'string' || rawArgs.trim() === '') return null;
+
+    const checkArgs = {};
+    let remainingString = rawArgs;
+
+    // Look for constraint expression (everything that's not a name parameter)
+    const nameMatch = remainingString.match(/name:\s*"([^"]*)"/);
+    if (nameMatch && nameMatch[1]) {
+      checkArgs.name = nameMatch[1];
+      remainingString = remainingString.replace(nameMatch[0], '').trim();
+    }
+
+    // Remove leading/trailing commas and whitespace
+    remainingString = remainingString.replace(/^,\s*|,\s*$/g, '').trim();
+
+    // The remaining string should be the constraint expression
+    if (remainingString) {
+      checkArgs.constraint = remainingString;
+    }
+
+    return Object.keys(checkArgs).length > 0 ? checkArgs : rawArgs;
   }
 }
 

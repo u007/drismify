@@ -61,7 +61,7 @@ The test suite is now passing successfully. We've fixed the connection-related e
 - [x] Add support for composite/multi-field unique constraints
 - [x] Add support for referential actions (onDelete, onUpdate) - Full support for Cascade, Restrict, SetNull, SetDefault, and NoAction
 - [x] Implement cascade operations - Implemented through referential actions
-- [ ] Add support for database-level constraints
+- [x] Add support for database-level constraints
 
 ### Performance & Infrastructure
 - [ ] Implement connection pooling

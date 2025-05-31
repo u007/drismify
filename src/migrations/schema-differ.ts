@@ -125,6 +125,7 @@ export class SchemaDiffer {
     const primaryKey: string[] = [];
     const uniqueConstraints: string[] = [];
     const foreignKeys: string[] = [];
+    const checkConstraints: string[] = [];
     const indexes: { name: string; columns: string[] }[] = [];
 
     // Process fields
@@ -160,8 +161,10 @@ export class SchemaDiffer {
       }
 
       // Check for unique constraint
-      if (field.attributes.some(attr => attr.name === 'unique')) {
-        uniqueConstraints.push(`UNIQUE (${columnName})`);
+      const uniqueAttr = field.attributes.find(attr => attr.name === 'unique');
+      if (uniqueAttr) {
+        const constraintName = uniqueAttr.args?.name ? `CONSTRAINT ${uniqueAttr.args.name} ` : '';
+        uniqueConstraints.push(`${constraintName}UNIQUE (${columnName})`);
       }
 
       // Check for relation/foreign key
@@ -172,7 +175,8 @@ export class SchemaDiffer {
         const referencedField = relationAttr.args.references[0];
 
         // Build foreign key constraint with referential actions
-        let foreignKeyConstraint = `FOREIGN KEY ("${this.toSnakeCase(fieldName)}") REFERENCES "${referencedTable}"("${this.toSnakeCase(referencedField)}")`;
+        const constraintName = relationAttr.args.name ? `CONSTRAINT ${relationAttr.args.name} ` : '';
+        let foreignKeyConstraint = `${constraintName}FOREIGN KEY ("${this.toSnakeCase(fieldName)}") REFERENCES "${referencedTable}"("${this.toSnakeCase(referencedField)}")`;
 
         // Add referential actions if specified
         if (relationAttr.args.onDelete) {
@@ -216,7 +220,11 @@ export class SchemaDiffer {
             columns: attr.args.fields.map((f: string) => this.toSnakeCase(f))
           });
         } else if (attr.name === 'unique' && attr.args && attr.args.fields && Array.isArray(attr.args.fields)) {
-          uniqueConstraints.push(`UNIQUE (${attr.args.fields.map((f: string) => this.toSnakeCase(f)).join(', ')})`);
+          const constraintName = attr.args.name ? `CONSTRAINT ${attr.args.name} ` : '';
+          uniqueConstraints.push(`${constraintName}UNIQUE (${attr.args.fields.map((f: string) => this.toSnakeCase(f)).join(', ')})`);
+        } else if (attr.name === 'check' && attr.args && attr.args.constraint) {
+          const constraintName = attr.args.name ? `CONSTRAINT ${attr.args.name} ` : '';
+          checkConstraints.push(`${constraintName}CHECK (${attr.args.constraint})`);
         }
       }
     }
@@ -228,6 +236,9 @@ export class SchemaDiffer {
 
     // Add unique constraints
     columns.push(...uniqueConstraints);
+
+    // Add check constraints
+    columns.push(...checkConstraints);
 
     // Add foreign keys
     columns.push(...foreignKeys);

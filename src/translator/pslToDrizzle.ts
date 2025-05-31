@@ -347,9 +347,10 @@ export function translatePslToDrizzleSchema(pslAst: PslAstNode[]): string {
 
     const columnsString = columnDefinitions.length > 0 ? columnDefinitions.join('\n') : "  // No direct columns defined for this model yet (check relations/enums)";
 
-    // Process model-level attributes (@@index, @@unique, etc.)
+    // Process model-level attributes (@@index, @@unique, @@check, etc.)
     if (model.attributes && model.attributes.length > 0) {
-      imports.add("import { index, uniqueIndex } from 'drizzle-orm/sqlite-core';");
+      imports.add("import { index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';");
+      imports.add("import { sql } from 'drizzle-orm';");
 
       for (const attr of model.attributes) {
         if (attr.name === 'index' && attr.args && attr.args.fields && Array.isArray(attr.args.fields)) {
@@ -365,6 +366,13 @@ export function translatePslToDrizzleSchema(pslAst: PslAstNode[]): string {
 
           indexDefinitions.push(
             `export const ${constNameCamel}${pascalToCamelCase(attr.args.name || `Unique${attr.args.fields.join('')}`)} = uniqueIndex(${indexName}, [${fieldsArray}]);\n`
+          );
+        } else if (attr.name === 'check' && attr.args && attr.args.constraint) {
+          const checkName = attr.args.name ? `'${attr.args.name}'` : `'check_${tableNameSnake}_${Date.now()}'`;
+          const constraintExpression = attr.args.constraint;
+
+          indexDefinitions.push(
+            `export const ${constNameCamel}${pascalToCamelCase(attr.args.name || `Check${Date.now()}`)} = check(${checkName}, sql\`${constraintExpression}\`);\n`
           );
         }
       }

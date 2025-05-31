@@ -561,6 +561,152 @@ CREATE TABLE "comment" (
 );
 ```
 
+## Database-Level Constraints Support
+
+Drismify provides comprehensive support for database-level constraints to ensure data integrity and enforce business rules at the database level.
+
+### Check Constraints (`@@check`)
+
+Use check constraints to enforce custom validation rules on your data:
+
+```prisma
+model User {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  age      Int
+  salary   Float
+  status   String
+
+  // Named check constraints
+  @@check(age >= 18, name: "minimum_age")
+  @@check(salary > 0, name: "positive_salary")
+
+  // Unnamed check constraints
+  @@check(status IN ('active', 'inactive', 'suspended'))
+  @@check(LENGTH(email) > 5)
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float
+  discount    Float    @default(0)
+
+  // Complex check constraints
+  @@check(price > 0 AND price < 1000000, name: "valid_price_range")
+  @@check(discount >= 0 AND discount <= 1, name: "valid_discount")
+  @@check(LENGTH(name) > 0 AND LENGTH(name) <= 255)
+}
+```
+
+### Index Constraints (`@@index`)
+
+Create database indexes for improved query performance:
+
+```prisma
+model User {
+  id       Int      @id @default(autoincrement())
+  email    String
+  username String
+  status   String
+  createdAt DateTime @default(now())
+
+  // Named indexes
+  @@index([email, username], name: "user_credentials_idx")
+  @@index([status, createdAt], name: "user_status_created_idx")
+
+  // Unnamed indexes
+  @@index([email])
+  @@index([createdAt])
+}
+```
+
+### Named Constraints
+
+All constraint types support custom names for better database management:
+
+```prisma
+model Order {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  total      Float
+  status     String
+  customer   Customer @relation(fields: [customerId], references: [id], name: "order_customer_fk")
+
+  // Named unique constraint
+  @@unique([customerId, total], name: "unique_customer_total")
+
+  // Named check constraint
+  @@check(total > 0, name: "positive_total")
+
+  // Named index
+  @@index([status, total], name: "order_status_total_idx")
+}
+```
+
+### Enhanced Unique Constraints
+
+Drismify supports both single-field and multi-field unique constraints with optional custom names:
+
+```prisma
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique(name: "unique_user_email")
+  username String @unique
+
+  // Multi-field unique constraint with custom name
+  @@unique([email, username], name: "unique_user_credentials")
+}
+```
+
+### Enhanced Foreign Key Constraints
+
+Foreign key constraints now support custom names along with referential actions:
+
+```prisma
+model Post {
+  id       Int  @id @default(autoincrement())
+  authorId Int
+  author   User @relation(
+    fields: [authorId],
+    references: [id],
+    onDelete: Cascade,
+    onUpdate: Restrict,
+    name: "post_author_fk"
+  )
+}
+```
+
+### Generated SQL
+
+Drismify automatically generates the appropriate SQL constraints:
+
+```sql
+-- Table with check constraints
+CREATE TABLE "user" (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  age INTEGER NOT NULL,
+  salary REAL NOT NULL,
+  status TEXT NOT NULL,
+  CONSTRAINT minimum_age CHECK (age >= 18),
+  CONSTRAINT positive_salary CHECK (salary > 0),
+  CHECK (status IN ('active', 'inactive', 'suspended')),
+  CHECK (LENGTH(email) > 5)
+);
+
+-- Named foreign key constraint
+CREATE TABLE "post" (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id INTEGER NOT NULL,
+  CONSTRAINT post_author_fk FOREIGN KEY ("author_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE RESTRICT
+);
+
+-- Named indexes
+CREATE INDEX user_credentials_idx ON user (email, username);
+CREATE INDEX user_status_created_idx ON user (status, created_at);
+```
+
 ## Database Views Support
 
 Drismify supports database views for read-only queries that combine data from multiple tables:
@@ -688,6 +834,10 @@ npx drismify seed --factory --count 100
 - Added full support for referential actions (onDelete, onUpdate) with all five action types: Cascade, Restrict, SetNull, SetDefault, and NoAction
 - Implemented referential actions in schema parser, translator, and migration system
 - Added comprehensive test suite for referential actions functionality
+- Implemented comprehensive database-level constraints support including CHECK constraints, named constraints for all constraint types
+- Enhanced unique constraints, foreign key constraints, and index constraints with custom naming support
+- Added @@check constraint parsing, translation, and migration generation with both named and unnamed constraints
+- Improved constraint SQL generation with proper CONSTRAINT naming for better database management
 
 ## Current Limitations and Pending Features
 
