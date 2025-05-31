@@ -57,8 +57,8 @@ The test suite is now passing successfully. We've fixed the connection-related e
 
 ### Schema Features
 - [x] Add support for views - Basic view parsing and schema definition support implemented
-- [ ] Implement composite types
-- [ ] Add support for composite/multi-field unique constraints
+- [x] Implement composite types - Full support for composite types including parsing, schema translation, client generation, and JSON storage
+- [x] Add support for composite/multi-field unique constraints
 - [ ] Add support for referential actions (onDelete, onUpdate)
 - [ ] Implement cascade operations
 - [ ] Add support for database-level constraints

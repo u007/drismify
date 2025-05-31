@@ -390,8 +390,23 @@ ${view.fields.map(field => `  ${field.name}?: boolean;`).join('\n')}
 `;
     }).join('\n');
 
+    // Generate composite types
+    const compositeTypes = types.map(typeDef => {
+      const typeName = typeDef.name;
+      const fields = typeDef.fields.map(field => {
+        const fieldName = field.name;
+        const fieldType = this.mapFieldType(field.type, enums, types);
+        const isOptional = field.type.optional ? '?' : '';
+        return `  ${fieldName}${isOptional}: ${fieldType};`;
+      }).join('\n');
+
+      return `export type ${typeName} = {\n${fields}\n};`;
+    }).join('\n\n');
+
     const content = `
 ${enumTypes}
+
+${compositeTypes}
 
 ${modelTypes}
 

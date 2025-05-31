@@ -94,11 +94,53 @@ export function translatePslToDrizzleSchema(pslAst: PslAstNode[]): string {
   // Process composite types
   const typeDefinitions: string[] = [];
   const typeAsts = pslAst.filter(node => node.type === 'type') as PslTypeAst[];
+  const knownTypeNames = new Set(typeAsts.map(t => t.name));
 
   for (const typeDef of typeAsts) {
     const typeNamePascal = typeDef.name;
     const fieldsString = typeDef.fields.map(field => {
-      const fieldType = field.type.optional ? `${field.type.name}?` : field.type.name;
+      let fieldType = field.type.name;
+
+      // Map Prisma types to TypeScript types
+      switch (fieldType) {
+        case 'String':
+          fieldType = 'string';
+          break;
+        case 'Int':
+          fieldType = 'number';
+          break;
+        case 'Float':
+          fieldType = 'number';
+          break;
+        case 'Boolean':
+          fieldType = 'boolean';
+          break;
+        case 'DateTime':
+          fieldType = 'Date';
+          break;
+        case 'Json':
+          fieldType = 'any';
+          break;
+        case 'Bytes':
+          fieldType = 'Buffer';
+          break;
+        default:
+          // Check if it's an enum or another composite type
+          if (knownEnumNames.has(fieldType) || knownTypeNames.has(fieldType)) {
+            // Keep the original type name (no change needed)
+          } else {
+            // Unknown type, keep as is (no change needed)
+          }
+      }
+
+      if (field.type.isArray) {
+        fieldType = `${fieldType}[]`;
+      }
+
+      if (field.type.optional) {
+        fieldType = `${fieldType} | null`;
+      }
+
       return `  ${field.name}: ${fieldType};`;
     }).join('\n');
 
@@ -206,6 +248,10 @@ export function translatePslToDrizzleSchema(pslAst: PslAstNode[]): string {
           if (knownEnumNames.has(field.type.name)) {
             // This field uses a defined enum type
             columnType = `text('${columnNameSnake}').$type<${field.type.name}>()`;
+          } else if (knownTypeNames.has(field.type.name)) {
+            // This field uses a composite type - store as JSON
+            imports.add("import { text } from 'drizzle-orm/sqlite-core';");
+            columnType = `text('${columnNameSnake}', { mode: 'json' }).$type<${field.type.name}>()`;
           } else {
             // If type is another model name (potential relation scalar field like authorId)
             // For now, if it's not a known scalar or enum, skip direct column generation.

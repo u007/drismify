@@ -15,6 +15,7 @@ Drismify is a work-in-progress Prisma ORM replacement supporting TursoDB and SQL
 - **Migration System**: Generate and apply migrations
 - **Advanced Query Features**: Support for aggregation functions and JSON operations
 - **Field Selection**: Select specific fields in queries to optimize data transfer and improve performance
+- **Composite Types**: Full support for composite types with JSON storage and type safety
 
 ## Installation
 
@@ -306,6 +307,175 @@ npx drismify seed [schema-path] [seed-script]
 npx drismify studio [schema-path] [--port 5555]
 ```
 
+## Composite Types Support
+
+Drismify supports Prisma composite types, allowing you to define reusable structured data types:
+
+### Defining Composite Types
+
+```prisma
+// Define composite types in your schema
+type Address {
+  street  String
+  city    String
+  state   String
+  zip     String
+  country String
+}
+
+type ContactInfo {
+  email   String
+  phone   String?
+  website String?
+}
+
+// Use composite types in models
+model User {
+  id      Int     @id @default(autoincrement())
+  name    String
+  address Address
+  contact ContactInfo
+}
+
+model Business {
+  id          Int         @id @default(autoincrement())
+  name        String
+  address     Address
+  coordinates Coordinates?
+}
+```
+
+### Working with Composite Types
+
+```typescript
+// Create records with composite types
+const user = await prisma.user.create({
+  data: {
+    name: 'John Doe',
+    address: {
+      street: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zip: '10001',
+      country: 'USA'
+    },
+    contact: {
+      email: 'john@example.com',
+      phone: '+1-555-0123',
+      website: 'https://johndoe.com'
+    }
+  }
+});
+
+// Query records with composite types
+const users = await prisma.user.findMany({
+  where: {
+    // Composite types are stored as JSON and can be queried
+    'address.city': 'New York'
+  }
+});
+```
+
+Composite types are automatically stored as JSON in the database while maintaining full TypeScript type safety in your application code.
+
+## Unique Constraints Support
+
+Drismify provides full support for both single-field and multi-field unique constraints, ensuring data integrity at the database level.
+
+### Single-field Unique Constraints
+
+Use the `@unique` attribute on individual fields:
+
+```prisma
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  username String @unique
+  name     String
+}
+```
+
+### Multi-field Unique Constraints
+
+Use the `@@unique` attribute at the model level to create composite unique constraints:
+
+```prisma
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  authorId Int
+  author   User   @relation(fields: [authorId], references: [id])
+
+  // Ensure each author can only have one post with the same title
+  @@unique([title, authorId])
+}
+
+model Profile {
+  id       Int    @id @default(autoincrement())
+  platform String
+  handle   String
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id])
+
+  // Ensure each user can only have one profile per platform
+  @@unique([platform, userId])
+}
+```
+
+### Named Unique Constraints
+
+You can provide custom names for your unique constraints:
+
+```prisma
+model Category {
+  id       Int    @id @default(autoincrement())
+  name     String
+  parentId Int?
+
+  // Custom constraint name
+  @@unique([name, parentId], name: "unique_category_name_per_parent")
+}
+```
+
+### Error Handling
+
+Unique constraint violations are properly handled and return meaningful error messages:
+
+```typescript
+try {
+  await prisma.user.create({
+    data: {
+      email: 'existing@example.com', // This email already exists
+      username: 'newuser'
+    }
+  });
+} catch (error) {
+  // Error: UNIQUE constraint failed: user.email
+  console.error('Unique constraint violation:', error.message);
+}
+```
+
+### NULL Values in Unique Constraints
+
+SQLite treats NULL values as unique, so multiple records can have NULL values in unique fields:
+
+```prisma
+model Category {
+  id       Int    @id @default(autoincrement())
+  name     String
+  parentId Int?   // Can be NULL
+
+  @@unique([name, parentId])
+}
+```
+
+```typescript
+// These are all valid - NULL values are treated as unique
+await prisma.category.create({ data: { name: 'Technology', parentId: null } });
+await prisma.category.create({ data: { name: 'Science', parentId: null } });
+await prisma.category.create({ data: { name: 'Technology', parentId: null } }); // This is allowed in SQLite
+```
+
 ## Database Views Support
 
 Drismify supports database views for read-only queries that combine data from multiple tables:
@@ -405,6 +575,7 @@ npx drismify seed --factory --count 100
 
 ## Changes
 
+- Added full support for composite types - Schema parsing, type generation, client generation, and JSON storage implemented
 - Added support for database views - Schema parsing, type generation, and basic view functionality implemented
 - Implemented nested writes functionality for creating, connecting, disconnecting, and deleting related records
 - Added support for to-one and to-many relationships in nested operations
@@ -443,8 +614,7 @@ Drismify is still in development and lacks several Prisma ORM features:
 - Full-text search capabilities
 
 ### Schema Features
-- Composite types
-- Composite/multi-field unique constraints
+- ✅ Composite/multi-field unique constraints - Full support for both single-field (@unique) and multi-field (@@unique) unique constraints
 - Referential actions (onDelete, onUpdate)
 - Cascade operations
 
