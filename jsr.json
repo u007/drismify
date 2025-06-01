@@ -51,20 +51,20 @@
   "publish": {
     "include": [
       "src/**/*.ts",
+      "src/**/*.js",
       "README.md",
       "LICENSE",
-      "jsr.json"
+      "jsr.json",
+      "package.json"
     ],
     "exclude": [
       "tests/**/*",
-      "generated/**/*",
       "src/examples/**/*",
       "**/*.test.ts",
       "**/*.test.js",
       "**/*.spec.ts",
       "**/*.spec.js",
       "dev.db",
-      "migrations/**/*",
       "temp/**/*",
       "docs/**/*",
       "scripts/**/*",
