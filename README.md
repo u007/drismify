@@ -451,31 +451,39 @@ drismify validate ./prisma/schema.prisma --verbose --suggestions --lint
 drismify generate-schema ./prisma/schema.prisma ./src/db/schema.ts
 ```
 
-### Temporarily Disabled Commands
+### Available Commands
 
-The following commands are temporarily disabled due to ES module import issues and will be available in a future release:
+All CLI commands are now fully functional:
 
 ```bash
-# Project initialization (coming soon)
+# Project initialization
 drismify init [directory] [--provider sqlite|turso]
 
-# Client generation (coming soon)
+# Client generation
 drismify generate [schema-path] [--output ./generated/client]
 
-# Database operations (coming soon)
+# Database operations
 drismify db push [--schema schema.prisma] [--force] [--reset]
 drismify db pull [--schema schema.prisma]
 
-# Migration management (coming soon)
+# Migration management
 drismify migrate dev [schema-path] [migration-name]
 drismify migrate deploy
 drismify migrate reset
 drismify migrate status
 
-# Data management (coming soon)
+# Database introspection
+drismify introspect <database-url> [provider] [output-path]
+
+# Database seeding
 drismify seed [schema-path] [seed-script] [--reset]
+```
+
+### Temporarily Disabled Commands
+
+```bash
+# Database studio (coming soon)
 drismify studio [schema-path] [--port 5555]
-drismify introspect <database-url> [provider]
 ```
 
 ### Using with npx (without global installation)
@@ -1108,18 +1116,16 @@ await generator.generateFromAST(ast);
 - **Library Usage**: Use Drismify programmatically in your applications
 - **TypeScript Support**: Full TypeScript support with generated type definitions
 - **JSR & NPM Publishing**: Ready for distribution on both registries
-
-### 🚧 **In Development (Temporarily Disabled)**
-
-The following features exist in the codebase but are temporarily disabled due to ES module import issues:
-
 - **Client Generation**: Generate type-safe database clients
 - **Migration System**: Database migration generation and management
 - **Database Operations**: Push/pull schema changes to/from database
 - **Project Initialization**: Scaffold new Drismify projects
 - **Data Seeding**: Populate databases with test data
-- **Database Studio**: Web-based database management interface
 - **Database Introspection**: Generate schemas from existing databases
+
+### 🚧 **In Development**
+
+- **Database Studio**: Web-based database management interface
 
 ### 🎯 **Upcoming Features**
 

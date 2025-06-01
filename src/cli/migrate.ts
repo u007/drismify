@@ -99,8 +99,8 @@ export async function migrateDev(options: MigrateOptions = {}): Promise<void> {
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
     
     // Parse the schema
-    const parser = require('../parser/generatedParser.js');
-    const ast = parser.parse(schemaContent);
+    const { parseSchema } = await import('../parser/index.js');
+    const ast = await parseSchema(schemaContent);
     
     // Extract datasource from the AST
     const datasource = ast.find((node: any) => node.type === 'datasource');
@@ -143,8 +143,8 @@ export async function migrateDev(options: MigrateOptions = {}): Promise<void> {
   // Generate client if not skipGenerate
   if (!skipGenerate) {
     console.log('Generating client...');
-    const { ClientGenerator } = require('../generator/client-generator');
-    
+    const { ClientGenerator } = await import('../generator/client-generator.js');
+
     const generator = new ClientGenerator({
       outputDir: path.join(path.dirname(schemaPath), 'generated', 'client'),
       generateTypes: true,
@@ -152,7 +152,7 @@ export async function migrateDev(options: MigrateOptions = {}): Promise<void> {
       generatePackageJson: true,
       generateReadme: true
     });
-    
+
     await generator.generateFromSchemaFile(schemaPath);
     console.log('Client generated successfully');
   }
@@ -185,8 +185,8 @@ export async function migrateDeploy(options: MigrateOptions = {}): Promise<void>
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
   
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
   
   // Extract datasource from the AST
   const datasource = ast.find((node: any) => node.type === 'datasource');
@@ -276,8 +276,8 @@ export async function migrateReset(options: MigrateOptions = {}): Promise<void> 
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
   
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
   
   // Extract datasource from the AST
   const datasource = ast.find((node: any) => node.type === 'datasource');
@@ -338,8 +338,8 @@ export async function migrateStatus(options: MigrateOptions = {}): Promise<void>
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
   
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
   
   // Extract datasource from the AST
   const datasource = ast.find((node: any) => node.type === 'datasource');

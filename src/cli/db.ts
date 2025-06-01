@@ -59,8 +59,8 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
   
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
   
   // Extract datasource from the AST
   const datasource = ast.find((node: any) => node.type === 'datasource');
@@ -150,8 +150,8 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
   // Generate the client if not skipped
   if (!skipGenerate) {
     console.log('Generating client...');
-    const { ClientGenerator } = require('../generator/client-generator');
-    
+    const { ClientGenerator } = await import('../generator/client-generator.js');
+
     const generator = new ClientGenerator({
       outputDir: path.join(path.dirname(schemaPath), 'generated', 'client'),
       generateTypes: true,
@@ -159,7 +159,7 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
       generatePackageJson: true,
       generateReadme: true
     });
-    
+
     await generator.generateFromSchemaFile(schemaPath);
     console.log('Client generated successfully');
   }
@@ -183,8 +183,8 @@ export async function dbPull(options: DbOptions = {}): Promise<void> {
   const existingSchemaContent = fs.readFileSync(schemaPath, 'utf-8');
 
   // Parse the existing schema to extract datasource
-  const parser = require('../parser/generatedParser.js');
-  const existingAst = parser.parse(existingSchemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const existingAst = await parseSchema(existingSchemaContent);
 
   // Extract datasource from the AST
   const datasource = existingAst.find((node: any) => node.type === 'datasource');
@@ -206,7 +206,7 @@ export async function dbPull(options: DbOptions = {}): Promise<void> {
   console.log(`Database URL: ${url}`);
 
   // Use the introspection functionality
-  const { introspectDatabase } = require('./introspect');
+  const { introspectDatabase } = await import('./introspect.js');
 
   try {
     const newSchema = await introspectDatabase({
@@ -257,8 +257,8 @@ export async function dbSeed(options: DbOptions = {}): Promise<void> {
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
   
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
   
   // Extract datasource from the AST
   const datasource = ast.find((node: any) => node.type === 'datasource');
@@ -342,7 +342,7 @@ export async function dbSeed(options: DbOptions = {}): Promise<void> {
       });
     } else {
       // Execute JavaScript file directly
-      require(path.resolve(seedScriptPath));
+      await import(path.resolve(seedScriptPath));
     }
     
     console.log('Seed script executed successfully');

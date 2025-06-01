@@ -2,32 +2,44 @@
  * Prisma Schema Parser
  */
 
+import * as fs from 'node:fs';
+
 // Import the generated parser
-let parser: any;
-try {
-  parser = require('./generatedParser.js');
-} catch (e) {
-  console.error('Failed to load parser. Did you run "pnpm build:parser"?');
-  throw e;
+let parser: any = null;
+
+async function loadParser() {
+  if (!parser) {
+    try {
+      // Use dynamic import for ES modules
+      const parserModule = await import('./generatedParser.js');
+      parser = parserModule.default || parserModule;
+    } catch (e) {
+      console.error('Failed to load parser. Did you run "pnpm build:parser"?');
+      throw e;
+    }
+  }
+  return parser;
 }
 
 /**
  * Parse a Prisma schema
  */
-export function parseSchema(schema: string): any[] {
-  return parser.parse(schema);
+export async function parseSchema(schema: string): Promise<any[]> {
+  const p = await loadParser();
+  return p.parse(schema);
 }
 
 /**
  * Parse a Prisma schema file
  */
-export function parseSchemaFile(filePath: string): any[] {
-  const fs = require('fs');
+export async function parseSchemaFile(filePath: string): Promise<any[]> {
   const schema = fs.readFileSync(filePath, 'utf-8');
   return parseSchema(schema);
 }
 
 /**
- * Export the parser
+ * Get the parser instance (async)
  */
-export { parser };
+export async function getParser() {
+  return loadParser();
+}

@@ -158,7 +158,8 @@ async function main() {
         console.log(`Outputting to: ${drizzleSchemaOutPath}`);
         try {
             const pslContent = fs.readFileSync(pslPath, 'utf-8');
-            const pslAst = parser.parse(pslContent) as any[]; // Assuming AST is an array
+            const { parseSchema } = await import('./parser/index.js');
+            const pslAst = await parseSchema(pslContent) as any[]; // Assuming AST is an array
             const drizzleSchemaContent = translatePslToDrizzleSchema(pslAst);
 
             // Ensure the output directory exists
@@ -184,13 +185,29 @@ async function main() {
             if(error.stack) console.error(`Stack: ${error.stack}`);
         }
     } else if ((command === 'generate-client' || command === 'generate') && prismaSchemaPathArg) {
-        console.error('❌ Client generation is temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
-        console.log('For now, you can use the library directly in your code.');
-    } else if (command === 'migrate') {
-        console.error('❌ Migration commands are temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
-    } else if (false && command === 'migrate' && args[1]) {
+        const schemaPath = path.resolve(prismaSchemaPathArg);
+        const outputDir = args[2];
+
+        console.log(`Generating client from: ${schemaPath}`);
+
+        try {
+            // Import the generate module
+            const { generateClient } = await import('./cli/generate.js');
+
+            await generateClient({
+                schemaPath,
+                outputDir,
+                watch: args.includes('--watch')
+            });
+
+            console.log('Client generated successfully');
+        } catch (e: unknown) {
+            console.error("Failed to generate client:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
+    } else if (command === 'migrate' && args[1]) {
         const subCommand = args[1];
         const schemaPath = args[2] ? path.resolve(args[2]) : path.resolve('./schema.prisma');
 
@@ -209,8 +226,16 @@ async function main() {
                     fs.mkdirSync(migrationsDir, { recursive: true });
                 }
 
-                // Migration functionality is disabled
-                throw new Error('Migration generation is disabled');
+                // Import the migrate module
+                const { migrateDev } = await import('./cli/migrate.js');
+
+                await migrateDev({
+                    schemaPath,
+                    name: migrationName,
+                    migrationsDir
+                });
+
+                console.log('Migration generated and applied successfully');
             } catch (e: unknown) {
                 console.error("Failed to generate or apply migration:");
                 const error = e as Error;
@@ -224,8 +249,14 @@ async function main() {
             console.log(`Applying migrations from: ${migrationsDir}`);
 
             try {
-                // Migration functionality is disabled
-                throw new Error('Migration application is disabled');
+                // Import the migrate module
+                const { migrateDeploy } = await import('./cli/migrate.js');
+
+                await migrateDeploy({
+                    migrationsDir
+                });
+
+                console.log('Migrations applied successfully');
             } catch (e: unknown) {
                 console.error("Failed to apply migrations:");
                 const error = e as Error;
@@ -239,8 +270,14 @@ async function main() {
             console.log(`Resetting database with migrations from: ${migrationsDir}`);
 
             try {
-                // Migration functionality is disabled
-                throw new Error('Database reset is disabled');
+                // Import the migrate module
+                const { migrateReset } = await import('./cli/migrate.js');
+
+                await migrateReset({
+                    migrationsDir
+                });
+
+                console.log('Database reset successfully');
             } catch (e: unknown) {
                 console.error("Failed to reset database:");
                 const error = e as Error;
@@ -254,8 +291,15 @@ async function main() {
             console.log(`Checking migration status from: ${migrationsDir}`);
 
             try {
-                // Migration functionality is disabled
-                throw new Error('Migration status check is disabled');
+                // Import the migrate module
+                const { migrateStatus } = await import('./cli/migrate.js');
+
+                const status = await migrateStatus({
+                    migrationsDir
+                });
+
+                console.log('Migration status checked successfully');
+                console.log(status);
             } catch (e: unknown) {
                 console.error("Failed to check migration status:");
                 const error = e as Error;
@@ -270,9 +314,6 @@ async function main() {
             console.log("  migrate status                            - Show migration status");
         }
     } else if (command === 'init') {
-        console.error('❌ Init command is temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
-    } else if (false && command === 'init') {
         // Initialize a new Drismify project
         const directory = args[1] || '.';
         const provider = args[2] || 'sqlite';
@@ -299,18 +340,67 @@ async function main() {
             console.error(`Stack: ${error.stack}`);
         }
     } else if (command === 'introspect') {
-        console.error('❌ Introspect command is temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
+        const databaseUrl = args[1];
+        const provider = args[2] || 'sqlite';
+        const outputPath = args[3] || 'schema.prisma';
+
+        if (!databaseUrl) {
+            console.error('Database URL is required for introspection');
+            console.log('Usage: drismify introspect <database-url> [provider] [output-path]');
+            return;
+        }
+
+        console.log(`Introspecting ${provider} database...`);
+        console.log(`Database URL: ${databaseUrl}`);
+        console.log(`Output path: ${outputPath}`);
+
+        try {
+            // Import the introspect module
+            const { introspectDatabase } = await import('./cli/introspect.js');
+
+            const schema = await introspectDatabase({
+                url: databaseUrl,
+                provider: provider as 'sqlite' | 'turso',
+                output: outputPath,
+                overwrite: args.includes('--overwrite'),
+                saveComments: !args.includes('--no-comments'),
+                debug: args.includes('--debug')
+            });
+
+            console.log(`Schema introspected successfully and written to: ${outputPath}`);
+        } catch (e: unknown) {
+            console.error("Failed to introspect database:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
     } else if (command === 'seed') {
-        console.error('❌ Seed command is temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
+        const schemaPath = args[1] ? path.resolve(args[1]) : path.resolve('./schema.prisma');
+        const seedScript = args[2];
+
+        console.log(`Seeding database using schema: ${schemaPath}`);
+
+        try {
+            // Import the db module
+            const { dbSeed } = await import('./cli/db.js');
+
+            await dbSeed({
+                schemaPath,
+                seedScript,
+                reset: args.includes('--reset')
+            });
+
+            console.log('Database seeded successfully');
+        } catch (e: unknown) {
+            console.error("Failed to seed database:");
+            const error = e as Error;
+            console.error(`Message: ${error.message}`);
+            console.error(`Stack: ${error.stack}`);
+        }
     } else if (command === 'studio') {
         console.error('❌ Studio command is temporarily disabled due to build issues.');
         console.log('This feature will be available in a future release.');
-    } else if (command === 'db') {
-        console.error('❌ Database commands are temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
-    } else if (false && command === 'db' && args[1]) {
+    } else if (command === 'db' && args[1]) {
         const subCommand = args[1];
 
         // Parse schema path from --schema flag or positional argument
@@ -390,34 +480,17 @@ async function main() {
             console.log("  db pull [schema-path]                                       - Pull schema from database");
             console.log("  db seed [seed-script] [--reset]                             - Seed database");
         }
-    } else if (command === 'generate') {
-        console.error('❌ Generate command is temporarily disabled due to build issues.');
-        console.log('This feature will be available in a future release.');
-        console.log('For now, you can use the library directly in your code.');
-    } else if (false && command === 'generate') {
-        // Generate client
-        const schemaPath = args[1] ? path.resolve(args[1]) : path.resolve('./schema.prisma');
-        const outputDir = args[2];
-
-        console.log(`Generating client from: ${schemaPath}`);
-
-        try {
-            // Import the generate module
-            const { generateClient } = require('./cli/generate');
-
-            await generateClient({
-                schemaPath,
-                outputDir,
-                watch: args.includes('--watch')
-            });
-
-            console.log('Client generated successfully');
-        } catch (e: unknown) {
-            console.error("Failed to generate client:");
-            const error = e as Error;
-            console.error(`Message: ${error.message}`);
-            console.error(`Stack: ${error.stack}`);
-        }
+    } else if (command === 'db') {
+        console.log("Available db commands:");
+        console.log("  db push [schema-path] [--skip-generate] [--force] [--reset] - Push schema to database");
+        console.log("  db pull [schema-path]                                       - Pull schema from database");
+        console.log("  db seed [seed-script] [--reset]                             - Seed database");
+    } else if (command === 'migrate') {
+        console.log("Available migrate commands:");
+        console.log("  migrate dev [schema-path] [migration-name] - Generate and apply migrations in development");
+        console.log("  migrate deploy                            - Apply migrations in production");
+        console.log("  migrate reset                             - Reset the database");
+        console.log("  migrate status                            - Show migration status");
     } else {
         console.log("Available commands:");
         console.log("  init [directory] [provider]               - Initialize a new Drismify project.");

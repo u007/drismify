@@ -80,10 +80,10 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
     }
     
     // Get database schema information
-    const tables = await adapter.getTables();
-    const columns = await adapter.getColumns();
-    const foreignKeys = await adapter.getForeignKeys();
-    const indexes = await adapter.getIndexes();
+    const tables = await (adapter as any).getTables();
+    const columns = await (adapter as any).getColumns();
+    const foreignKeys = await (adapter as any).getForeignKeys();
+    const indexes = await (adapter as any).getIndexes();
 
     // Get constraint information if adapter supports it
     let checkConstraints: any[] = [];

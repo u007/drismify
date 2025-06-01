@@ -1,6 +1,5 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { ClientGenerator } from '../generator/client-generator';
 
 /**
  * Options for client generation
@@ -71,8 +70,8 @@ export async function generateClient(options: GenerateOptions = {}): Promise<voi
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
 
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
-  const ast = parser.parse(schemaContent);
+  const { parseSchema } = await import('../parser/index.js');
+  const ast = await parseSchema(schemaContent);
 
   // Extract generator from the AST
   const generatorNode = ast.find((node: { type: string; [key: string]: unknown }) => node.type === 'generator') as { type: string; assignments?: { output?: string } } | undefined;
@@ -112,6 +111,7 @@ export async function generateClient(options: GenerateOptions = {}): Promise<voi
   console.log(`Generating client from: ${schemaPath}`);
   console.log(`Outputting to: ${clientOutputDir}`);
 
+  const { ClientGenerator } = await import('../generator/client-generator.js');
   const clientGenerator = new ClientGenerator({
     outputDir: clientOutputDir,
     generateTypes,

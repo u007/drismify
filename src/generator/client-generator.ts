@@ -120,8 +120,8 @@ export class ClientGenerator {
     const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
 
     // Parse the schema
-    const parser = require('../parser/generatedParser.js');
-    const ast = parser.parse(schemaContent) as PslAstNode[];
+    const { parseSchema } = await import('../parser/index.js');
+    const ast = await parseSchema(schemaContent) as PslAstNode[];
 
     // Generate the client
     await this.generateFromAst(ast);
