@@ -21,10 +21,17 @@ export * from './extensions/advanced';
 export * from './parser';
 
 // Export version information
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 // Namespace for all Drismify functionality
-export const Drismify = {
+export const Drismify: {
+  defineExtension: any;
+  getExtensionContext: any;
+  extensions: any;
+  VERSION: string;
+  createClient: any;
+  createAdapter: any;
+} = {
   // Extension utilities
   defineExtension: require('./extensions').defineExtension,
   getExtensionContext: require('./extensions').getExtensionContext,

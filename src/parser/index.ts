@@ -40,6 +40,6 @@ export async function parseSchemaFile(filePath: string): Promise<any[]> {
 /**
  * Get the parser instance (async)
  */
-export async function getParser() {
+export async function getParser(): Promise<any> {
   return loadParser();
 }
