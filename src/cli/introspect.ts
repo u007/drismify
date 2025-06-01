@@ -84,9 +84,21 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
     const columns = await adapter.getColumns();
     const foreignKeys = await adapter.getForeignKeys();
     const indexes = await adapter.getIndexes();
-    
+
+    // Get constraint information if adapter supports it
+    let checkConstraints: any[] = [];
+    let uniqueConstraints: any[] = [];
+
+    if (typeof (adapter as any).getCheckConstraints === 'function') {
+      checkConstraints = await (adapter as any).getCheckConstraints();
+    }
+
+    if (typeof (adapter as any).getUniqueConstraints === 'function') {
+      uniqueConstraints = await (adapter as any).getUniqueConstraints();
+    }
+
     if (debug) {
-      console.log(`Found ${tables.length} tables, ${columns.length} columns, ${foreignKeys.length} foreign keys, ${indexes.length} indexes`);
+      console.log(`Found ${tables.length} tables, ${columns.length} columns, ${foreignKeys.length} foreign keys, ${indexes.length} indexes, ${checkConstraints.length} check constraints, ${uniqueConstraints.length} unique constraints`);
     }
     
     // Generate Prisma schema
@@ -95,6 +107,8 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
       columns,
       foreignKeys,
       indexes,
+      checkConstraints,
+      uniqueConstraints,
       provider,
       url,
       saveComments
@@ -121,6 +135,8 @@ interface SchemaGenerationOptions {
   columns: any[];
   foreignKeys: any[];
   indexes: any[];
+  checkConstraints: any[];
+  uniqueConstraints: any[];
   provider: string;
   url: string;
   saveComments: boolean;
@@ -135,6 +151,8 @@ function generatePrismaSchema(options: SchemaGenerationOptions): string {
     columns,
     foreignKeys,
     indexes,
+    checkConstraints,
+    uniqueConstraints,
     provider,
     url,
     saveComments
@@ -158,29 +176,51 @@ function generatePrismaSchema(options: SchemaGenerationOptions): string {
     
     // Add columns
     const tableColumns = columns.filter(column => column.table === tableName);
-    
+
     for (const column of tableColumns) {
       const fieldName = toCamelCase(column.name);
       const fieldType = mapSqlTypeToPrismaType(column.type);
-      const isRequired = !column.isNullable;
+      const isOptional = column.isNullable && !column.isPrimaryKey;
       const isAutoIncrement = column.isAutoIncrement;
-      
+      const isPrimaryKey = column.isPrimaryKey;
+
       let line = `  ${fieldName} ${fieldType}`;
-      
+
+      // Add optional modifier
+      if (isOptional) {
+        line = line.replace(fieldType, `${fieldType}?`);
+      }
+
       // Add field modifiers
-      if (isRequired) {
+      if (isPrimaryKey) {
         line += ' @id';
       }
-      
+
       if (isAutoIncrement) {
         line += ' @default(autoincrement())';
-      } else if (column.defaultValue !== null) {
+      } else if (column.defaultValue !== null && column.defaultValue !== undefined) {
         line += ` @default(${formatDefaultValue(column.defaultValue, fieldType)})`;
       }
-      
-      // Add column mapping
-      line += ` @map("${column.name}")`;
-      
+
+      // Add unique constraint for single-field unique constraints
+      const singleFieldUnique = uniqueConstraints.find(uc =>
+        uc.table === tableName &&
+        uc.columns.length === 1 &&
+        uc.columns[0] === column.name &&
+        !isPrimaryKey // Don't add @unique to primary keys
+      );
+
+      if (singleFieldUnique) {
+        const uniqueName = singleFieldUnique.isNamed && singleFieldUnique.name ?
+          `, name: "${singleFieldUnique.name}"` : '';
+        line += ` @unique${uniqueName ? `(${uniqueName})` : ''}`;
+      }
+
+      // Add column mapping if different from field name
+      if (column.name !== fieldName) {
+        line += ` @map("${column.name}")`;
+      }
+
       schema += `${line}\n`;
     }
     
@@ -192,29 +232,67 @@ function generatePrismaSchema(options: SchemaGenerationOptions): string {
         // This table references another table (many-to-one)
         const referencedModelName = toPascalCase(relation.referencedTable);
         const fieldName = toCamelCase(referencedModelName);
-        
-        schema += `  ${fieldName} ${referencedModelName} @relation(fields: [${toCamelCase(relation.foreignKey)}], references: [${toCamelCase(relation.referencedColumn)}])\n`;
+
+        // Build relation attributes
+        let relationAttrs = `fields: [${toCamelCase(relation.foreignKey)}], references: [${toCamelCase(relation.referencedColumn)}]`;
+
+        // Add referential actions if they exist and are not default
+        if (relation.onDelete && relation.onDelete !== 'NO ACTION') {
+          relationAttrs += `, onDelete: ${mapSqlReferentialActionToPrisma(relation.onDelete)}`;
+        }
+        if (relation.onUpdate && relation.onUpdate !== 'NO ACTION') {
+          relationAttrs += `, onUpdate: ${mapSqlReferentialActionToPrisma(relation.onUpdate)}`;
+        }
+
+        // Add relation name if available
+        if (relation.name) {
+          relationAttrs += `, name: "${relation.name}"`;
+        }
+
+        schema += `  ${fieldName} ${referencedModelName} @relation(${relationAttrs})\n`;
       } else {
         // Another table references this table (one-to-many)
         const foreignModelName = toPascalCase(relation.foreignTable);
         const fieldName = toCamelCase(foreignModelName) + 's';
-        
+
         schema += `  ${fieldName} ${foreignModelName}[] @relation("${relation.name}")\n`;
       }
     }
     
     // Add indexes
     const tableIndexes = indexes.filter(index => index.table === tableName);
-    
+
     for (const index of tableIndexes) {
       const isUnique = index.isUnique;
       const columns = index.columns.map(col => toCamelCase(col)).join(', ');
-      
+      const indexName = index.name ? `, name: "${index.name}"` : '';
+
       if (isUnique) {
-        schema += `  @@unique([${columns}])\n`;
+        schema += `  @@unique([${columns}]${indexName})\n`;
       } else {
-        schema += `  @@index([${columns}])\n`;
+        schema += `  @@index([${columns}]${indexName})\n`;
       }
+    }
+
+    // Add unique constraints (from table-level constraints, excluding single-field ones already handled)
+    const tableUniqueConstraints = uniqueConstraints.filter(constraint =>
+      constraint.table === tableName && constraint.columns.length > 1
+    );
+
+    for (const constraint of tableUniqueConstraints) {
+      const columns = constraint.columns.map(col => toCamelCase(col)).join(', ');
+      const constraintName = constraint.isNamed && constraint.name ? `, name: "${constraint.name}"` : '';
+
+      schema += `  @@unique([${columns}]${constraintName})\n`;
+    }
+
+    // Add check constraints
+    const tableCheckConstraints = checkConstraints.filter(constraint => constraint.table === tableName);
+
+    for (const constraint of tableCheckConstraints) {
+      const constraintName = constraint.isNamed && constraint.name ? `, name: "${constraint.name}"` : '';
+
+      schema += `  @@check(${constraint.expression}${constraintName})\n`;
     }
     
     // Add table mapping
@@ -302,4 +380,24 @@ function toPascalCase(str: string): string {
 function toCamelCase(str: string): string {
   const pascal = toPascalCase(str);
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+}
+
+/**
+ * Map SQL referential action to Prisma referential action
+ */
+function mapSqlReferentialActionToPrisma(action: string): string {
+  switch (action.toUpperCase()) {
+    case 'CASCADE':
+      return 'Cascade';
+    case 'RESTRICT':
+      return 'Restrict';
+    case 'SET NULL':
+      return 'SetNull';
+    case 'SET DEFAULT':
+      return 'SetDefault';
+    case 'NO ACTION':
+      return 'NoAction';
+    default:
+      return 'Restrict'; // Default fallback
+  }
 }

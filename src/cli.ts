@@ -452,7 +452,15 @@ async function main() {
         }
     } else if (command === 'db' && args[1]) {
         const subCommand = args[1];
-        const schemaPath = args[2] ? path.resolve(args[2]) : path.resolve('./schema.prisma');
+
+        // Parse schema path from --schema flag or positional argument
+        let schemaPath = path.resolve('./schema.prisma');
+        const schemaIndex = args.indexOf('--schema');
+        if (schemaIndex !== -1 && args[schemaIndex + 1]) {
+            schemaPath = path.resolve(args[schemaIndex + 1]);
+        } else if (args[2] && !args[2].startsWith('--')) {
+            schemaPath = path.resolve(args[2]);
+        }
 
         if (subCommand === 'push') {
             // Push schema to database

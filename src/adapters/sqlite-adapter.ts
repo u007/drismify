@@ -162,7 +162,9 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       }
 
       // Handle multiple statements by splitting on semicolons
-      if (query.includes(';') && !query.trim().toLowerCase().startsWith('select')) {
+      // Exclude PRAGMA and SELECT statements from multi-statement handling
+      const queryLower = query.trim().toLowerCase();
+      if (query.includes(';') && !queryLower.startsWith('select') && !queryLower.startsWith('pragma')) {
         // For non-SELECT queries with multiple statements, execute them in a transaction
         this.db.run('BEGIN TRANSACTION');
 
@@ -189,9 +191,11 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       const stmt = this.db.query(query);
       let result;
 
-      // Check if the query is a SELECT query
-      if (query.trim().toLowerCase().startsWith('select')) {
+      // Check if the query is a SELECT query or PRAGMA command (both return data)
+      if (queryLower.startsWith('select') || queryLower.startsWith('pragma')) {
         result = params ? stmt.all(params || []) : stmt.all();
+
+
       } else {
         // For non-SELECT queries (INSERT, UPDATE, DELETE, CREATE, etc.)
         result = params ? stmt.run(params || []) : stmt.run();
@@ -208,16 +212,19 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Split SQL statements by semicolons, ignoring semicolons inside quotes
+   * Split SQL statements by semicolons, ignoring semicolons inside quotes and handling comments
    */
   private splitSqlStatements(sql: string): string[] {
+    // First, remove comments from the SQL
+    const cleanedSql = this.removeComments(sql);
+
     const statements: string[] = [];
     let currentStatement = '';
     let inSingleQuote = false;
     let inDoubleQuote = false;
 
-    for (let i = 0; i < sql.length; i++) {
-      const char = sql[i];
+    for (let i = 0; i < cleanedSql.length; i++) {
+      const char = cleanedSql[i];
 
       // Handle quotes
       if (char === "'" && !inDoubleQuote) {
@@ -228,7 +235,10 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
 
       // If we're at a semicolon and not inside quotes
       if (char === ';' && !inSingleQuote && !inDoubleQuote) {
-        statements.push(`${currentStatement};`);
+        const statement = `${currentStatement};`.trim();
+        if (statement) {
+          statements.push(statement);
+        }
         currentStatement = '';
       } else {
         currentStatement += char;
@@ -236,11 +246,72 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     }
 
     // Add the last statement if there is one
-    if (currentStatement.trim()) {
-      statements.push(currentStatement);
+    const finalStatement = currentStatement.trim();
+    if (finalStatement) {
+      statements.push(finalStatement);
     }
 
     return statements;
+  }
+
+  /**
+   * Remove SQL comments from a string
+   */
+  private removeComments(sql: string): string {
+    let result = '';
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+
+    for (let i = 0; i < sql.length; i++) {
+      const char = sql[i];
+      const nextChar = i + 1 < sql.length ? sql[i + 1] : '';
+
+      // Handle line comments (-- comment)
+      if (!inSingleQuote && !inDoubleQuote && !inBlockComment && char === '-' && nextChar === '-') {
+        inLineComment = true;
+        i++; // Skip the next character
+        continue;
+      }
+
+      // Handle block comments (/* comment */)
+      if (!inSingleQuote && !inDoubleQuote && !inLineComment && char === '/' && nextChar === '*') {
+        inBlockComment = true;
+        i++; // Skip the next character
+        continue;
+      }
+
+      // End line comment on newline
+      if (inLineComment && (char === '\n' || char === '\r')) {
+        inLineComment = false;
+        result += char; // Keep the newline
+        continue;
+      }
+
+      // End block comment on */
+      if (inBlockComment && char === '*' && nextChar === '/') {
+        inBlockComment = false;
+        i++; // Skip the next character
+        continue;
+      }
+
+      // Skip characters if we're in a comment
+      if (inLineComment || inBlockComment) {
+        continue;
+      }
+
+      // Handle quotes
+      if (char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+      } else if (char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+      }
+
+      result += char;
+    }
+
+    return result;
   }
 
   async executeRaw<T = any>(query: string, params?: any[]): Promise<QueryResult<T>> {
@@ -333,7 +404,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   async searchFullText(tableName: string, query: string): Promise<QueryResult<any>> {
     this.ensureConnected();
     const virtualTableName = `${tableName}_fts`;
-    
+
     const result = await this.execute(`
       SELECT t.* FROM ${tableName} t
       INNER JOIN ${virtualTableName} f ON t.rowid = f.rowid
@@ -342,5 +413,208 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     `, [query]);
 
     return result;
+  }
+
+  // Introspection methods for database schema
+  async getTables(): Promise<any[]> {
+    this.ensureConnected();
+    const result = await this.execute(`
+      SELECT name, type, sql
+      FROM sqlite_master
+      WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+      ORDER BY name;
+    `);
+    return result.data || [];
+  }
+
+  async getColumns(): Promise<any[]> {
+    this.ensureConnected();
+    const tables = await this.getTables();
+    const columns: any[] = [];
+
+    for (const table of tables) {
+      const tableInfo = await this.execute(`PRAGMA table_info(${table.name});`);
+
+      for (const column of tableInfo.data || []) {
+        columns.push({
+          table: table.name,
+          name: column.name,
+          type: column.type,
+          isNullable: !column.notnull,
+          isAutoIncrement: column.pk && column.type.toLowerCase().includes('integer'),
+          isPrimaryKey: column.pk,
+          defaultValue: column.dflt_value,
+          position: column.cid
+        });
+      }
+    }
+
+    return columns;
+  }
+
+  async getForeignKeys(): Promise<any[]> {
+    this.ensureConnected();
+    const tables = await this.getTables();
+    const foreignKeys: any[] = [];
+
+    for (const table of tables) {
+      const fkInfo = await this.execute(`PRAGMA foreign_key_list(${table.name});`);
+
+      for (const fk of fkInfo.data || []) {
+        foreignKeys.push({
+          name: `fk_${table.name}_${fk.from}_${fk.table}_${fk.to}`,
+          foreignTable: table.name,
+          foreignKey: fk.from,
+          referencedTable: fk.table,
+          referencedColumn: fk.to,
+          onDelete: fk.on_delete,
+          onUpdate: fk.on_update
+        });
+      }
+    }
+
+    return foreignKeys;
+  }
+
+  async getIndexes(): Promise<any[]> {
+    this.ensureConnected();
+    const tables = await this.getTables();
+    const indexes: any[] = [];
+
+    for (const table of tables) {
+      const indexList = await this.execute(`PRAGMA index_list(${table.name});`);
+
+      for (const index of indexList.data || []) {
+        // Include user-created indexes ('c') and unique constraint indexes ('u')
+        // Exclude primary key auto-indexes ('pk') and internal indexes
+        if (index.origin === 'c' || index.origin === 'u') {
+          const indexInfo = await this.execute(`PRAGMA index_info(${index.name});`);
+          const columns = (indexInfo.data || []).map((col: any) => col.name);
+
+          indexes.push({
+            name: index.name,
+            table: table.name,
+            columns,
+            isUnique: index.unique,
+            isPrimary: false
+          });
+        }
+      }
+    }
+
+    return indexes;
+  }
+
+  async getCheckConstraints(): Promise<any[]> {
+    this.ensureConnected();
+    const tables = await this.getTables();
+    const checkConstraints: any[] = [];
+
+    for (const table of tables) {
+      if (table.sql) {
+        // Parse CHECK constraints from CREATE TABLE statement
+        // Use a more sophisticated approach to handle nested parentheses
+        const checkConstraints_parsed = this.parseCheckConstraints(table.sql, table.name);
+        checkConstraints.push(...checkConstraints_parsed);
+      }
+    }
+
+    return checkConstraints;
+  }
+
+  /**
+   * Parse CHECK constraints from SQL, handling nested parentheses correctly
+   */
+  private parseCheckConstraints(sql: string, tableName: string): any[] {
+    const constraints: any[] = [];
+
+    // Find all CHECK constraint patterns
+    const checkRegex = /(CONSTRAINT\s+(\w+)\s+)?CHECK\s*\(/gi;
+    let match;
+
+    while ((match = checkRegex.exec(sql)) !== null) {
+      const isNamed = !!match[2];
+      const constraintName = match[2];
+      const startPos = match.index + match[0].length - 1; // Position of opening parenthesis
+
+      // Find the matching closing parenthesis
+      const expression = this.extractBalancedParentheses(sql, startPos);
+
+      if (expression) {
+        constraints.push({
+          name: constraintName || null,
+          table: tableName,
+          expression: expression.trim(),
+          isNamed
+        });
+      }
+    }
+
+    return constraints;
+  }
+
+  /**
+   * Extract content between balanced parentheses starting at the given position
+   */
+  private extractBalancedParentheses(sql: string, startPos: number): string | null {
+    if (sql[startPos] !== '(') return null;
+
+    let depth = 0;
+    let i = startPos;
+
+    while (i < sql.length) {
+      if (sql[i] === '(') {
+        depth++;
+      } else if (sql[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          // Found the matching closing parenthesis
+          return sql.substring(startPos + 1, i);
+        }
+      }
+      i++;
+    }
+
+    return null; // Unbalanced parentheses
+  }
+
+  async getUniqueConstraints(): Promise<any[]> {
+    this.ensureConnected();
+    const tables = await this.getTables();
+    const uniqueConstraints: any[] = [];
+
+    for (const table of tables) {
+      if (table.sql) {
+        // Parse UNIQUE constraints from CREATE TABLE statement
+        const uniqueMatches = table.sql.match(/CONSTRAINT\s+(\w+)\s+UNIQUE\s*\(([^)]+)\)|UNIQUE\s*\(([^)]+)\)/gi);
+
+        if (uniqueMatches) {
+          for (const match of uniqueMatches) {
+            const namedMatch = match.match(/CONSTRAINT\s+(\w+)\s+UNIQUE\s*\(([^)]+)\)/i);
+            const unnamedMatch = match.match(/UNIQUE\s*\(([^)]+)\)/i);
+
+            if (namedMatch) {
+              const columns = namedMatch[2].split(',').map(col => col.trim().replace(/["`]/g, ''));
+              uniqueConstraints.push({
+                name: namedMatch[1],
+                table: table.name,
+                columns,
+                isNamed: true
+              });
+            } else if (unnamedMatch) {
+              const columns = unnamedMatch[1].split(',').map(col => col.trim().replace(/["`]/g, ''));
+              uniqueConstraints.push({
+                name: null,
+                table: table.name,
+                columns,
+                isNamed: false
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return uniqueConstraints;
   }
 }

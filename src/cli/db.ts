@@ -105,16 +105,8 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
   // Generate a migration
   console.log('Generating migration...');
   const migrationPath = await generator.generateMigrationFromSchemaFile(schemaPath, 'db-push');
-  
-  if (!migrationPath) {
-    console.log('No schema changes detected');
-    return;
-  }
-  
-  console.log(`Migration generated at: ${migrationPath}`);
-  
-  // Apply the migration
-  console.log('Applying migration...');
+
+  // Create a migration manager (this will ensure the database exists)
   const manager = new MigrationManager({
     migrationsDir,
     connectionOptions: {
@@ -124,8 +116,19 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
     },
     debug: true
   });
-  
+
   await manager.initialize();
+
+  if (!migrationPath) {
+    console.log('No schema changes detected');
+    await manager.close();
+    return;
+  }
+
+  console.log(`Migration generated at: ${migrationPath}`);
+
+  // Apply the migration
+  console.log('Applying migration...');
   const results = await manager.applyPendingMigrations({
     force
   });
@@ -167,17 +170,72 @@ export async function dbPush(options: DbOptions = {}): Promise<void> {
  */
 export async function dbPull(options: DbOptions = {}): Promise<void> {
   const {
-    schemaPath = 'schema.prisma'
+    schemaPath = 'schema.prisma',
+    force = false
   } = options;
-  
-  // This is a placeholder for the actual implementation
-  // In a real implementation, we would:
-  // 1. Connect to the database
-  // 2. Introspect the database schema
-  // 3. Generate a Prisma schema file
-  
-  console.log('Database introspection is not yet implemented');
-  console.log('This would generate a schema file from an existing database');
+
+  // Check if the schema file exists and read datasource info
+  if (!fs.existsSync(schemaPath)) {
+    throw new Error(`Schema file not found: ${schemaPath}. Please create a schema file with datasource configuration first.`);
+  }
+
+  // Read the existing schema file to get datasource configuration
+  const existingSchemaContent = fs.readFileSync(schemaPath, 'utf-8');
+
+  // Parse the existing schema to extract datasource
+  const parser = require('../parser/generatedParser.js');
+  const existingAst = parser.parse(existingSchemaContent);
+
+  // Extract datasource from the AST
+  const datasource = existingAst.find((node: any) => node.type === 'datasource');
+  if (!datasource) {
+    throw new Error('No datasource found in the existing schema. Please add a datasource configuration.');
+  }
+
+  // Extract provider and URL
+  const provider = datasource.assignments.provider;
+  const url = datasource.assignments.url.replace(/^env\("([^"]+)"\)$/, (_, envVar) => {
+    return process.env[envVar] || '';
+  });
+
+  if (!url) {
+    throw new Error('Database URL not found in datasource configuration');
+  }
+
+  console.log(`Introspecting ${provider} database...`);
+  console.log(`Database URL: ${url}`);
+
+  // Use the introspection functionality
+  const { introspectDatabase } = require('./introspect');
+
+  try {
+    const newSchema = await introspectDatabase({
+      url,
+      provider: provider as 'sqlite' | 'turso',
+      output: schemaPath,
+      overwrite: force,
+      saveComments: true,
+      debug: true
+    });
+
+    console.log(`Schema pulled successfully and written to: ${schemaPath}`);
+    console.log('Database introspection completed with support for:');
+    console.log('  - Tables and columns');
+    console.log('  - Primary keys and foreign keys');
+    console.log('  - Unique constraints (named and unnamed)');
+    console.log('  - Check constraints (named and unnamed)');
+    console.log('  - Indexes (named and unnamed)');
+    console.log('  - Referential actions (CASCADE, RESTRICT, etc.)');
+
+  } catch (error: any) {
+    if (error.message.includes('already exists') && !force) {
+      console.error(`Schema file already exists: ${schemaPath}`);
+      console.error('Use --force to overwrite the existing file');
+      throw error;
+    } else {
+      throw error;
+    }
+  }
 }
 
 /**

@@ -61,7 +61,8 @@ export class SchemaDiffer {
    * Diff two schemas
    */
   diffSchemas(oldAst: PslAstNode[], newAst: PslAstNode[]): SchemaChange[] {
-    const changes: SchemaChange[] = [];
+    const tableChanges: SchemaChange[] = [];
+    const indexChanges: SchemaChange[] = [];
 
     // Extract models from ASTs
     const oldModels = oldAst.filter(node => node.type === 'model') as PslModelAst[];
@@ -85,14 +86,22 @@ export class SchemaDiffer {
     // Find added models
     for (const model of newModels) {
       if (!oldModelMap.has(model.name)) {
-        changes.push(...this.generateCreateTableChanges(model));
+        const modelChanges = this.generateCreateTableChanges(model);
+        // Separate table creation from index creation
+        for (const change of modelChanges) {
+          if (change.type === SchemaChangeType.CREATE_TABLE) {
+            tableChanges.push(change);
+          } else if (change.type === SchemaChangeType.CREATE_INDEX) {
+            indexChanges.push(change);
+          }
+        }
       }
     }
 
     // Find removed models
     for (const model of oldModels) {
       if (!newModelMap.has(model.name)) {
-        changes.push({
+        tableChanges.push({
           type: SchemaChangeType.DROP_TABLE,
           tableName: this.toSnakeCase(model.name),
           sql: `DROP TABLE IF EXISTS ${this.toSnakeCase(model.name)};`
@@ -105,7 +114,15 @@ export class SchemaDiffer {
       const oldModel = oldModelMap.get(newModel.name);
 
       if (oldModel) {
-        changes.push(...this.diffModels(oldModel, newModel));
+        const modelChanges = this.diffModels(oldModel, newModel);
+        // Separate table changes from index changes
+        for (const change of modelChanges) {
+          if (change.type === SchemaChangeType.CREATE_INDEX || change.type === SchemaChangeType.DROP_INDEX) {
+            indexChanges.push(change);
+          } else {
+            tableChanges.push(change);
+          }
+        }
       }
     }
 
@@ -113,7 +130,8 @@ export class SchemaDiffer {
     // SQLite doesn't support enums directly, so we don't need to generate changes for them
     // But we might want to handle them differently for other database types in the future
 
-    return changes;
+    // Return table changes first, then index changes
+    return [...tableChanges, ...indexChanges];
   }
 
   /**
@@ -146,17 +164,18 @@ export class SchemaDiffer {
 
       // Check for primary key
       if (field.attributes.some(attr => attr.name === 'id')) {
-        primaryKey.push(columnName);
-
         // Check for autoincrement
-        if (field.attributes.some(attr =>
+        const hasAutoincrement = field.attributes.some(attr =>
           attr.name === 'default' &&
           attr.args &&
           typeof attr.args === 'object' &&
-          attr.args.type === 'function' &&
-          attr.args.name === 'autoincrement'
-        )) {
+          attr.args.function === 'autoincrement'
+        );
+
+        if (hasAutoincrement) {
           columnDef += ' PRIMARY KEY AUTOINCREMENT';
+        } else {
+          primaryKey.push(columnName);
         }
       }
 
