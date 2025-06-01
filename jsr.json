@@ -1,14 +1,60 @@
 {
   "name": "@drismify/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
+  "description": "A Prisma-compatible ORM replacement supporting SQLite and TursoDB with full schema compatibility and CLI tools",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u007/drismify.git"
+  },
+  "homepage": "https://github.com/u007/drismify",
+  "bugs": {
+    "url": "https://github.com/u007/drismify/issues"
+  },
+  "keywords": [
+    "prisma",
+    "orm",
+    "database",
+    "sqlite",
+    "turso",
+    "libsql",
+    "typescript",
+    "drizzle",
+    "schema",
+    "migration",
+    "cli"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./cli": "./src/cli.ts",
     "./adapters": "./src/adapters/index.ts",
     "./extensions": "./src/extensions/index.ts",
-    "./generator": "./src/generator/index.ts"
+    "./generator": "./src/generator/index.ts",
+    "./parser": "./src/parser/index.ts",
+    "./translator": "./src/translator/pslToDrizzle.ts",
+    "./migrations": "./src/migrations/index.ts",
+    "./client": "./src/client/index.ts"
+  },
+  "imports": {
+    "@/": "./src/"
+  },
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM"],
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
   },
   "publish": {
+    "include": [
+      "src/**/*.ts",
+      "README.md",
+      "LICENSE",
+      "jsr.json"
+    ],
     "exclude": [
       "tests/**/*",
       "generated/**/*",
@@ -21,7 +67,14 @@
       "migrations/**/*",
       "temp/**/*",
       "docs/**/*",
-      "scripts/**/*"
+      "scripts/**/*",
+      "dist/**/*",
+      "node_modules/**/*",
+      ".git/**/*",
+      "*.log",
+      "*.db",
+      "*.sqlite",
+      "*.sqlite3"
     ]
   }
 }

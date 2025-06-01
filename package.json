@@ -1,6 +1,6 @@
 {
   "name": "drismify",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A Prisma-compatible ORM replacement supporting SQLite and TursoDB with full schema compatibility and CLI tools",
   "type": "module",
   "main": "dist/index.js",

@@ -21,7 +21,7 @@ export * from './extensions/advanced';
 export * from './parser';
 
 // Export version information
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.1';
 
 // Namespace for all Drismify functionality
 export const Drismify: {
