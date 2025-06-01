@@ -156,7 +156,7 @@ export async function validateSchema(options: ValidateOptions = {}): Promise<Val
   const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
 
   // Parse the schema
-  const parser = require('../parser/generatedParser.js');
+  const parser = await import('../parser/generatedParser.js');
 
   try {
     const ast = parser.parse(schemaContent);

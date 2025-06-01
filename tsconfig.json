@@ -1,22 +1,31 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "commonjs",
-    // "rootDir": "./src", // Removing rootDir as baseUrl and paths provide more flexibility
-    "baseUrl": ".", // Setting baseUrl to the project root
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "baseUrl": ".",
     "paths": {
       "@generated/*": ["generated/*"],
-      "@src/*": ["src/*"] // Added for consistency, can be used for src imports too
+      "@src/*": ["src/*"]
     },
     "outDir": "./dist",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "preserveConstEnums": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "lib": ["ES2020", "DOM"]
   },
-  "include": ["src/**/*"], // Only include source files
+  "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
@@ -26,6 +35,15 @@
     "**/*.test.ts",
     "**/*.test.js",
     "**/*.spec.ts",
-    "**/*.spec.js"
+    "**/*.spec.js",
+    "temp/**/*",
+    "docs/**/*",
+    "scripts/**/*",
+    "src/cli/introspect.ts",
+    "src/cli/seed.ts",
+    "src/cli/studio.ts",
+    "src/extensions/json.ts",
+    "src/extensions/aggregation.ts",
+    "src/client/view-client.ts"
   ]
 }

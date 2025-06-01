@@ -84,7 +84,7 @@ export class BaseModelClient<
     // Try $getAdapter method first
     if (client && typeof (client as Record<string, unknown>).$getAdapter === 'function') {
       try {
-        adapter = (client as Record<string, unknown>).$getAdapter();
+        adapter = (client as any).$getAdapter();
         if (isDatabaseAdapter(adapter)) {
           return adapter;
         }

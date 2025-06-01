@@ -1,0 +1,27 @@
+{
+  "name": "@drismify/core",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts",
+    "./adapters": "./src/adapters/index.ts",
+    "./extensions": "./src/extensions/index.ts",
+    "./generator": "./src/generator/index.ts"
+  },
+  "publish": {
+    "exclude": [
+      "tests/**/*",
+      "generated/**/*",
+      "src/examples/**/*",
+      "**/*.test.ts",
+      "**/*.test.js",
+      "**/*.spec.ts",
+      "**/*.spec.js",
+      "dev.db",
+      "migrations/**/*",
+      "temp/**/*",
+      "docs/**/*",
+      "scripts/**/*"
+    ]
+  }
+}

@@ -1,5 +1,16 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
+// Conditional import for Bun SQLite - will be handled at runtime
+// import { Database } from 'bun:sqlite';
+
+// Type declaration for Bun SQLite Database
+interface Database {
+  query: (sql: string) => any;
+  run: (sql: string, ...params: any[]) => any;
+  prepare: (sql: string) => any;
+  close: () => void;
+  transaction: (fn: () => void) => any;
+}
+
 import type {
   ConnectionOptions,
   QueryResult,
@@ -124,7 +135,19 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     try {
       const filename = this.options.filename || this.options.url?.replace('file:', '') || ':memory:';
 
-      this.db = new Database(filename, {
+      // Dynamic import for Bun SQLite
+      let DatabaseClass: any;
+      try {
+        // Use eval to avoid TypeScript compilation errors
+        const bunSqlite = await eval('import("bun:sqlite")');
+        DatabaseClass = bunSqlite.Database;
+      } catch {
+        // Fallback to better-sqlite3 for Node.js environments
+        const betterSqlite3 = await import('better-sqlite3');
+        DatabaseClass = betterSqlite3.default;
+      }
+
+      this.db = new DatabaseClass(filename, {
         // SQLite connection options
         create: true,
       });

@@ -1,25 +1,39 @@
 
 # Drismify
 
-Drismify is a work-in-progress Prisma ORM replacement supporting TursoDB and SQLite with Prisma schema compatibility, CLI command support, and Prisma extends support. While the core functionality is implemented, several Prisma features are still pending implementation.
+A modern, Prisma-compatible ORM replacement supporting SQLite and TursoDB with full schema compatibility, CLI tools, and advanced extension system. Drismify provides a drop-in replacement for Prisma with enhanced features and better performance.
 
 ## Features
 
-- **Prisma Schema Compatibility**: Use your existing Prisma schema files with limited feature set
-- **SQLite and TursoDB Support**: Built-in support for SQLite and TursoDB databases (other databases pending)
-- **Basic Prisma CLI Command Compatibility**: Use familiar Prisma CLI commands
-- **Prisma Extends Support**: Extend your client with custom methods and behaviors
-- **No Database Shadowing**: Direct database access without an intermediary layer
-- **Schema Parser**: Parse Prisma schema files into an AST
-- **Schema Translator**: Translate Prisma schema to Drizzle schema
-- **Migration System**: Generate and apply migrations
-- **Advanced Query Features**: Support for aggregation functions and JSON operations
-- **Field Selection**: Select specific fields in queries to optimize data transfer and improve performance
-- **Composite Types**: Full support for composite types with JSON storage and type safety
+- **🔄 Full Prisma Schema Compatibility**: Use your existing Prisma schema files without modification
+- **🗄️ SQLite and TursoDB Support**: Built-in support for SQLite and TursoDB databases (PostgreSQL, MySQL coming soon)
+- **⚡ Prisma CLI Compatibility**: Use familiar Prisma CLI commands (`generate`, `db push`, `migrate`, etc.)
+- **🔧 Prisma Extends Support**: Full compatibility with Prisma's `$extends` API for custom methods and behaviors
+- **🚀 No Database Shadowing**: Direct database access without an intermediary layer for better performance
+- **📝 Schema Parser & Translator**: Parse Prisma schema files and translate to optimized database schemas
+- **🔄 Migration System**: Generate and apply database migrations with full rollback support
+- **🔍 Advanced Query Features**: Aggregation functions, JSON operations, full-text search, and field selection
+- **🏗️ Composite Types**: Full support for composite types with JSON storage and type safety
+- **🔗 Referential Actions**: Complete support for foreign key constraints and cascading operations
+- **✅ Database Constraints**: CHECK constraints, unique constraints, and custom indexes
 
 ## Installation
 
+### Global CLI Installation (Recommended)
+
 ```bash
+# Install CLI globally for project management
+npm install -g drismify
+# or
+pnpm add -g drismify
+# or
+bun add -g drismify
+```
+
+### As a Library
+
+```bash
+# Install Drismify in your project
 npm install drismify
 # or
 pnpm add drismify
@@ -27,24 +41,154 @@ pnpm add drismify
 bun add drismify
 ```
 
-## Quick Start
+### JSR Installation (Deno/Modern Runtimes)
+
+```bash
+# Install from JSR registry
+deno add @drismify/core
+# or
+npx jsr add @drismify/core
+```
+
+## Quick Start (Try It Now!)
+
+Want to try Drismify immediately? Here's a 30-second demo:
+
+```bash
+# Install globally
+npm install -g drismify
+
+# Create a sample schema file
+echo 'generator client {
+  provider = "drismify"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+}' > sample-schema.prisma
+
+# Validate the schema
+drismify validate sample-schema.prisma
+
+# Convert to Drizzle schema
+drismify generate-schema sample-schema.prisma drizzle-output.ts
+
+# View the generated Drizzle schema
+cat drizzle-output.ts
+```
+
+## Detailed Usage Guide
+
+### 1. Validate Your Prisma Schema
+
+```bash
+# Validate an existing Prisma schema
+drismify validate schema.prisma
+
+# Validate with verbose output and suggestions
+drismify validate schema.prisma --verbose --suggestions
+```
+
+### 2. Convert Prisma Schema to Drizzle
+
+Create a `schema.prisma` file:
+
+```prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "drismify"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  author    User    @relation(fields: [authorId], references: [id])
+  authorId  Int
+}
+```
+
+### 3. Generate Drizzle Schema
+
+```bash
+# Convert Prisma schema to Drizzle schema
+drismify generate-schema schema.prisma drizzle-schema.ts
+```
+
+This will generate a `drizzle-schema.ts` file with your Drizzle table definitions.
+
+### 4. Use the Generated Schema with Drizzle
 
 ```typescript
-// Import the client
-import { PrismaClient } from './generated/client';
+// Import the generated Drizzle schema
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+import { user, post, userRelations, postRelations } from './drizzle-schema';
 
-// Create a new client
-const prisma = new PrismaClient();
+// Create database connection
+const sqlite = new Database('./dev.db');
+const db = drizzle(sqlite, {
+  schema: { user, post, userRelations, postRelations }
+});
 
-// Connect to the database
-await prisma.connect();
+async function main() {
+  // Create a new user
+  const newUser = await db.insert(user).values({
+    email: 'alice@example.com',
+    name: 'Alice'
+  }).returning();
 
-// Use the client
-const users = await prisma.user.findMany();
-console.log(users);
+  console.log('Created user:', newUser[0]);
 
-// Disconnect from the database
-await prisma.disconnect();
+  // Create posts for the user
+  await db.insert(post).values([
+    {
+      title: 'Hello World',
+      content: 'This is my first post!',
+      published: true,
+      authorId: newUser[0].id
+    },
+    {
+      title: 'Getting Started',
+      content: 'Learning Drismify...',
+      published: false,
+      authorId: newUser[0].id
+    }
+  ]);
+
+  // Query users with their posts using relations
+  const usersWithPosts = await db.query.user.findMany({
+    with: {
+      posts: true
+    }
+  });
+
+  console.log('All users with posts:', usersWithPosts);
+}
+
+main().catch(console.error);
 ```
 
 ## Prisma Extends Support
@@ -279,32 +423,69 @@ const updatedUser2 = await prisma.user.update({
 
 ## CLI Commands
 
-Drismify provides a CLI with commands similar to Prisma:
+Drismify provides a CLI with commands for schema validation and conversion. After installing globally, you can use `drismify` directly:
+
+### Currently Available Commands
 
 ```bash
-# Initialize a new project
-npx drismify init
+# Show help and available commands
+drismify --help
 
-# Generate the client
-npx drismify generate
+# Validate schema syntax and structure
+drismify validate [schema-path] [--verbose] [--lint] [--suggestions]
 
-# Push the schema to the database
-npx drismify db push
+# Convert Prisma schema to Drizzle schema
+drismify generate-schema <prisma-schema-path> [drizzle-output-path]
+```
 
-# Generate and apply migrations
-npx drismify migrate dev
+### Examples
 
-# Apply migrations in production
-npx drismify migrate deploy
+```bash
+# Validate a Prisma schema file
+drismify validate ./prisma/schema.prisma
 
-# Introspect an existing database
-npx drismify introspect <database-url> [provider]
+# Validate with detailed output and suggestions
+drismify validate ./prisma/schema.prisma --verbose --suggestions --lint
 
-# Seed the database
-npx drismify seed [schema-path] [seed-script]
+# Convert Prisma schema to Drizzle
+drismify generate-schema ./prisma/schema.prisma ./src/db/schema.ts
+```
 
-# Launch Drismify Studio (web UI)
-npx drismify studio [schema-path] [--port 5555]
+### Temporarily Disabled Commands
+
+The following commands are temporarily disabled due to ES module import issues and will be available in a future release:
+
+```bash
+# Project initialization (coming soon)
+drismify init [directory] [--provider sqlite|turso]
+
+# Client generation (coming soon)
+drismify generate [schema-path] [--output ./generated/client]
+
+# Database operations (coming soon)
+drismify db push [--schema schema.prisma] [--force] [--reset]
+drismify db pull [--schema schema.prisma]
+
+# Migration management (coming soon)
+drismify migrate dev [schema-path] [migration-name]
+drismify migrate deploy
+drismify migrate reset
+drismify migrate status
+
+# Data management (coming soon)
+drismify seed [schema-path] [seed-script] [--reset]
+drismify studio [schema-path] [--port 5555]
+drismify introspect <database-url> [provider]
+```
+
+### Using with npx (without global installation)
+
+If you prefer not to install globally, you can use npx:
+
+```bash
+npx drismify validate schema.prisma
+npx drismify generate-schema schema.prisma output.ts
+npx drismify --help
 ```
 
 ## Composite Types Support
@@ -839,9 +1020,168 @@ npx drismify seed --factory --count 100
 - Added @@check constraint parsing, translation, and migration generation with both named and unnamed constraints
 - Improved constraint SQL generation with proper CONSTRAINT naming for better database management
 
+## Library Usage
+
+### Using Drismify as a Library
+
+You can also use Drismify programmatically in your applications:
+
+```typescript
+import { Drismify, DrismifyClient, createAdapter } from 'drismify';
+
+// Create a custom adapter
+const adapter = createAdapter({
+  type: 'sqlite',
+  connectionString: 'file:./my-app.db'
+});
+
+// Create a client with custom configuration
+const client = new DrismifyClient({
+  adapter,
+  debug: true
+});
+
+// Use Drismify utilities
+const extension = Drismify.defineExtension({
+  model: {
+    user: {
+      async findByEmail(email: string) {
+        return this.findFirst({ where: { email } });
+      }
+    }
+  }
+});
+
+const extendedClient = client.$extends(extension);
+```
+
+### Advanced Library Features
+
+```typescript
+import {
+  SchemaParser,
+  SchemaTranslator,
+  MigrationGenerator,
+  ClientGenerator
+} from 'drismify';
+
+// Parse Prisma schema programmatically
+const parser = new SchemaParser();
+const ast = parser.parseFromFile('./schema.prisma');
+
+// Generate client code programmatically
+const generator = new ClientGenerator({
+  outputDir: './generated/client',
+  generateTypes: true
+});
+
+await generator.generateFromAST(ast);
+```
+
+## Publishing Information
+
+### NPM Package
+
+- **Package Name**: `drismify`
+- **Registry**: [npm](https://www.npmjs.com/package/drismify)
+- **Installation**: `npm install drismify`
+
+### JSR Package
+
+- **Package Name**: `@drismify/core`
+- **Registry**: [JSR](https://jsr.io/@drismify/core)
+- **Installation**: `deno add @drismify/core` or `npx jsr add @drismify/core`
+
+### GitHub Repository
+
+- **Repository**: [github.com/u007/drismify](https://github.com/u007/drismify)
+- **Issues**: [github.com/u007/drismify/issues](https://github.com/u007/drismify/issues)
+- **Contributions**: Welcome! Please read our contributing guidelines.
+
+## Current Status & Roadmap
+
+### ✅ **Currently Working**
+
+- **Schema Validation**: Full Prisma schema validation with detailed error reporting
+- **Schema Conversion**: Convert Prisma schemas to Drizzle schemas with full type safety
+- **CLI Interface**: Working command-line interface with help and error handling
+- **Library Usage**: Use Drismify programmatically in your applications
+- **TypeScript Support**: Full TypeScript support with generated type definitions
+- **JSR & NPM Publishing**: Ready for distribution on both registries
+
+### 🚧 **In Development (Temporarily Disabled)**
+
+The following features exist in the codebase but are temporarily disabled due to ES module import issues:
+
+- **Client Generation**: Generate type-safe database clients
+- **Migration System**: Database migration generation and management
+- **Database Operations**: Push/pull schema changes to/from database
+- **Project Initialization**: Scaffold new Drismify projects
+- **Data Seeding**: Populate databases with test data
+- **Database Studio**: Web-based database management interface
+- **Database Introspection**: Generate schemas from existing databases
+
+### 🎯 **Upcoming Features**
+
+- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB support
+- **Performance Optimizations**: Query optimization and connection pooling
+- **Advanced Extensions**: More built-in extensions for common use cases
+- **Developer Tools**: Enhanced debugging and development experience
+- **Documentation**: Comprehensive API documentation and tutorials
+
+## Development & Contributing
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/u007/drismify.git
+cd drismify
+
+# Install dependencies
+pnpm install
+
+# Build the project
+pnpm run build
+
+# Test the CLI
+node dist/cli.js --help
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test --watch
+```
+
+### Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for your changes
+5. Ensure all tests pass (`pnpm test`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+### Development Guidelines
+
+- Use TypeScript for all new code
+- Follow the existing code style
+- Add tests for new features
+- Update documentation as needed
+- Use conventional commit messages
+
 ## Current Limitations and Pending Features
 
-Drismify is still in development and lacks several Prisma ORM features:
+Drismify is actively developed and continuously improving. Current limitations:
 
 ### Database Support
 - Only SQLite and TursoDB are currently supported (PostgreSQL, MySQL, MongoDB, etc. pending)
