@@ -65,7 +65,7 @@ describe('Check Constraints', () => {
     fs.writeFileSync(TEST_SCHEMA_PATH, TEST_SCHEMA);
 
     // Generate Drizzle schema
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
     fs.writeFileSync(TEST_SCHEMA_OUTPUT_PATH, drizzleSchema);
 
@@ -123,8 +123,8 @@ describe('Check Constraints', () => {
   });
 
   describe('Schema Generation', () => {
-    it('should parse check constraints from schema', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should parse check constraints from schema', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       const userModel = ast.find(node => node.type === 'model' && node.name === 'User');
       
       expect(userModel).toBeDefined();

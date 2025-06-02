@@ -106,8 +106,8 @@ describe('Database Constraints Integration', () => {
     });
   });
 
-  it('should parse all constraint types in a complex schema', () => {
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+  it('should parse all constraint types in a complex schema', async () => {
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     
     const userModel = ast.find(node => node.type === 'model' && node.name === 'User');
     expect(userModel).toBeDefined();
@@ -128,8 +128,8 @@ describe('Database Constraints Integration', () => {
     expect(uniqueConstraints.find(u => u.args?.name === 'unique_user_credentials')).toBeDefined();
   });
 
-  it('should generate complete Drizzle schema with all constraints', () => {
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+  it('should generate complete Drizzle schema with all constraints', async () => {
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
     fs.writeFileSync(TEST_SCHEMA_OUTPUT_PATH, drizzleSchema);
     
@@ -151,8 +151,8 @@ describe('Database Constraints Integration', () => {
     expect(drizzleSchema).toContain('onUpdate: \'restrict\'');
   });
 
-  it('should generate complete migration SQL with all constraints', () => {
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+  it('should generate complete migration SQL with all constraints', async () => {
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     const differ = new SchemaDiffer();
     const changes = differ.diffSchemas([], ast);
     
@@ -203,8 +203,8 @@ describe('Database Constraints Integration', () => {
     expect(namedIndexChange.sql).toContain('CREATE INDEX user_credentials_idx ON user');
   });
 
-  it('should handle complex constraint combinations correctly', () => {
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+  it('should handle complex constraint combinations correctly', async () => {
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     
     // Verify Post model has all expected constraints
     const postModel = ast.find(node => node.type === 'model' && node.name === 'Post');

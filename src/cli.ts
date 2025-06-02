@@ -315,8 +315,19 @@ async function main() {
         }
     } else if (command === 'init') {
         // Initialize a new Drismify project
-        const directory = args[1] || '.';
-        const provider = args[2] || 'sqlite';
+        let directory = '.';
+        let provider: 'sqlite' | 'turso' | 'mongodb' = 'sqlite';
+
+        // Parse arguments
+        for (let i = 1; i < args.length; i++) {
+            const arg = args[i];
+            if (arg === '--provider') {
+                provider = args[i + 1] as 'sqlite' | 'turso' | 'mongodb';
+                i++; // Skip the next argument since it's the provider value
+            } else if (!arg.startsWith('--')) {
+                directory = arg;
+            }
+        }
 
         console.log(`Initializing new Drismify project in: ${directory}`);
         console.log(`Database provider: ${provider}`);
@@ -327,7 +338,7 @@ async function main() {
 
             await initProject({
                 directory,
-                provider: provider as 'sqlite' | 'turso',
+                provider,
                 typescript: true,
                 overwrite: false
             });
@@ -360,7 +371,7 @@ async function main() {
 
             const schema = await introspectDatabase({
                 url: databaseUrl,
-                provider: provider as 'sqlite' | 'turso',
+                provider: provider as 'sqlite' | 'turso' | 'mongodb',
                 output: outputPath,
                 overwrite: args.includes('--overwrite'),
                 saveComments: !args.includes('--no-comments'),

@@ -1,12 +1,12 @@
 
 # Drismify
 
-A modern, Prisma-compatible ORM replacement supporting SQLite and TursoDB with full schema compatibility, CLI tools, and advanced extension system. Drismify provides a drop-in replacement for Prisma with enhanced features and better performance.
+A modern, Prisma-compatible ORM replacement supporting SQLite, TursoDB, and MongoDB with full schema compatibility, CLI tools, and advanced extension system. Drismify provides a drop-in replacement for Prisma with enhanced features and better performance.
 
 ## Features
 
 - **🔄 Full Prisma Schema Compatibility**: Use your existing Prisma schema files without modification
-- **🗄️ SQLite and TursoDB Support**: Built-in support for SQLite and TursoDB databases (PostgreSQL, MySQL coming soon)
+- **🗄️ Multi-Database Support**: Built-in support for SQLite, TursoDB, and MongoDB databases (PostgreSQL, MySQL coming soon)
 - **⚡ Prisma CLI Compatibility**: Use familiar Prisma CLI commands (`generate`, `db push`, `migrate`, etc.)
 - **🔧 Prisma Extends Support**: Full compatibility with Prisma's `$extends` API for custom methods and behaviors
 - **🚀 No Database Shadowing**: Direct database access without an intermediary layer for better performance
@@ -113,6 +113,12 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+// For MongoDB:
+// datasource db {
+//   provider = "mongodb"
+//   url      = "mongodb://localhost:27017/mydb"
+// }
+
 model User {
   id    Int     @id @default(autoincrement())
   email String  @unique
@@ -189,6 +195,105 @@ async function main() {
 }
 
 main().catch(console.error);
+```
+
+## MongoDB Support
+
+Drismify provides full support for MongoDB with native MongoDB operations and Prisma-compatible schema definitions.
+
+### MongoDB Configuration
+
+MongoDB connection details are managed through a centralized configuration file at `src/config/mongodb.config.ts`. This provides hardcoded connection settings for different environments:
+
+- **Test Environment**: Port 37017, database `drismify_test`
+- **Production Environment**: Port 27017, database `drismify_production`
+- **Example Environment**: Port 37017, database `drismify_example`
+
+All environments use the same credentials: `root:000000` with `admin` as the authentication source.
+
+### MongoDB Schema Example
+
+```prisma
+generator client {
+  provider = "drismify"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  email    String   @unique
+  name     String?
+  posts    Post[]
+  metadata Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String   @db.ObjectId
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+### MongoDB Operations
+
+```typescript
+import { MongoDBAdapter } from 'drismify';
+
+// Create MongoDB adapter
+const adapter = new MongoDBAdapter({
+  url: 'mongodb://localhost:37017',
+  database: 'myapp'
+});
+
+await adapter.connect();
+
+// Get MongoDB collections
+const usersCollection = adapter.getCollection('User');
+const postsCollection = adapter.getCollection('Post');
+
+// Native MongoDB operations
+const user = await usersCollection.insertOne({
+  email: 'user@example.com',
+  name: 'John Doe',
+  metadata: { preferences: { theme: 'dark' } }
+});
+
+// Query with MongoDB operators
+const posts = await postsCollection.find({
+  tags: { $in: ['mongodb', 'database'] },
+  published: true
+}).toArray();
+
+// Aggregation pipeline
+const userStats = await usersCollection.aggregate([
+  {
+    $lookup: {
+      from: 'Post',
+      localField: '_id',
+      foreignField: 'authorId',
+      as: 'posts'
+    }
+  },
+  {
+    $project: {
+      name: 1,
+      email: 1,
+      postCount: { $size: '$posts' }
+    }
+  }
+]).toArray();
 ```
 
 ## Prisma Extends Support
@@ -457,7 +562,7 @@ All CLI commands are now fully functional:
 
 ```bash
 # Project initialization
-drismify init [directory] [--provider sqlite|turso]
+drismify init [directory] [--provider sqlite|turso|mongodb]
 
 # Client generation
 drismify generate [schema-path] [--output ./generated/client]
@@ -1190,7 +1295,7 @@ We welcome contributions! Please:
 Drismify is actively developed and continuously improving. Current limitations:
 
 ### Database Support
-- Only SQLite and TursoDB are currently supported (PostgreSQL, MySQL, MongoDB, etc. pending)
+- SQLite, TursoDB, and MongoDB are currently supported (PostgreSQL, MySQL, etc. pending)
 
 ### Query Features
 - Advanced filtering operations (contains, startsWith, endsWith, etc.)

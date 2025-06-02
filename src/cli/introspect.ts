@@ -3,6 +3,7 @@ import * as path from 'path';
 import { DatabaseAdapter } from '../adapters';
 import { SQLiteAdapter } from '../adapters/sqlite-adapter';
 import { TursoAdapter } from '../adapters/turso-adapter';
+import { MongoDBAdapter } from '../adapters/mongodb-adapter';
 
 /**
  * Introspection options
@@ -14,9 +15,9 @@ export interface IntrospectionOptions {
   url?: string;
   
   /**
-   * Database provider (sqlite or turso)
+   * Database provider (sqlite, turso, or mongodb)
    */
-  provider?: 'sqlite' | 'turso';
+  provider?: 'sqlite' | 'turso' | 'mongodb';
   
   /**
    * Output path for the generated Prisma schema
@@ -68,6 +69,11 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
     adapter = new SQLiteAdapter({ filename: url });
   } else if (provider === 'turso') {
     adapter = new TursoAdapter({ url });
+  } else if (provider === 'mongodb') {
+    // For MongoDB, we need to extract database name from URL
+    const mongoUrl = new URL(url);
+    const database = mongoUrl.pathname.slice(1) || 'test'; // Remove leading slash, default to 'test'
+    adapter = new MongoDBAdapter({ url, database });
   } else {
     throw new Error(`Unsupported provider: ${provider}`);
   }
@@ -194,9 +200,14 @@ function generatePrismaSchema(options: SchemaGenerationOptions): string {
       // Add field modifiers
       if (isPrimaryKey) {
         line += ' @id';
+
+        // For MongoDB, add ObjectId mapping for _id field
+        if (provider === 'mongodb' && column.name === '_id') {
+          line += ' @default(auto()) @map("_id") @db.ObjectId';
+        }
       }
 
-      if (isAutoIncrement) {
+      if (isAutoIncrement && provider !== 'mongodb') {
         line += ' @default(autoincrement())';
       } else if (column.defaultValue !== null && column.defaultValue !== undefined) {
         line += ` @default(${formatDefaultValue(column.defaultValue, fieldType)})`;

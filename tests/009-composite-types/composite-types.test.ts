@@ -21,9 +21,9 @@ describe('Composite Types', () => {
   });
 
   describe('Schema Parsing', () => {
-    it('should parse composite type definitions', () => {
+    it('should parse composite type definitions', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
 
       // Find composite types in AST
       const compositeTypes = ast.filter(node => node.type === 'type');
@@ -52,9 +52,9 @@ describe('Composite Types', () => {
       expect(addressField?.type.name).toBe('Address');
     });
 
-    it('should parse models using composite types', () => {
+    it('should parse models using composite types', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
 
       // Find models in AST
       const models = ast.filter(node => node.type === 'model');
@@ -83,9 +83,9 @@ describe('Composite Types', () => {
   });
 
   describe('Schema Translation', () => {
-    it('should generate TypeScript types for composite types', () => {
+    it('should generate TypeScript types for composite types', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that composite types are generated
@@ -108,9 +108,9 @@ describe('Composite Types', () => {
       expect(drizzleSchema).toContain('  contact: ContactInfo;');
     });
 
-    it('should store composite type fields as JSON in database schema', () => {
+    it('should store composite type fields as JSON in database schema', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that composite type fields are stored as JSON
@@ -120,9 +120,9 @@ describe('Composite Types', () => {
       expect(drizzleSchema).toContain("coordinates: text('coordinates', { mode: 'json' }).$type<Coordinates>()");
     });
 
-    it('should handle enum types alongside composite types', () => {
+    it('should handle enum types alongside composite types', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that enums are still generated correctly
@@ -205,9 +205,9 @@ describe('Composite Types', () => {
   });
 
   describe('Runtime Usage', () => {
-    it('should handle composite types in create operations', () => {
+    it('should handle composite types in create operations', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Verify that the schema includes composite types as JSON fields
@@ -218,9 +218,9 @@ describe('Composite Types', () => {
       // The actual runtime testing would require a full client setup with database
     });
 
-    it('should support nested composite types', () => {
+    it('should support nested composite types', async () => {
       const schema = getFixture('composite-types-schema.prisma');
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
 
       // Find PersonalInfo type which contains nested Address and ContactInfo
       const personalInfoType = ast.find(node => node.type === 'type' && node.name === 'PersonalInfo');

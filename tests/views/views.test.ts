@@ -112,7 +112,7 @@ describe('Views Support', () => {
     }
   });
 
-  it('should parse view schema correctly', () => {
+  it('should parse view schema correctly', async () => {
     const { parseSchema } = require('../../src/parser');
     const schema = `
       view UserInfo {
@@ -123,7 +123,7 @@ describe('Views Support', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
     expect(ast).toHaveLength(1);
     expect(ast[0].type).toBe('view');
     expect(ast[0].name).toBe('UserInfo');

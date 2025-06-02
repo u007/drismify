@@ -13,7 +13,7 @@ export interface InitOptions {
   /**
    * Database provider to use
    */
-  provider?: 'sqlite' | 'turso';
+  provider?: 'sqlite' | 'turso' | 'mongodb';
   
   /**
    * Database URL
@@ -38,7 +38,9 @@ export async function initProject(options: InitOptions = {}): Promise<void> {
   const {
     directory = '.',
     provider = 'sqlite',
-    url = provider === 'sqlite' ? 'file:./dev.db' : 'libsql://localhost:8080',
+    url = provider === 'sqlite' ? 'file:./dev.db' :
+          provider === 'turso' ? 'libsql://localhost:8080' :
+          'mongodb://localhost:37017/mydb',
     typescript = true,
     overwrite = false
   } = options;

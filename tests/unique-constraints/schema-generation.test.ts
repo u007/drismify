@@ -8,7 +8,7 @@ import { translatePslToDrizzleSchema } from '../../src/translator/pslToDrizzle';
 
 describe('Unique Constraint Schema Generation', () => {
   describe('Single-field unique constraints', () => {
-    it('should generate correct Drizzle schema for @unique field attribute', () => {
+    it('should generate correct Drizzle schema for @unique field attribute', async () => {
       const schema = `
         model User {
           id    Int    @id @default(autoincrement())
@@ -17,7 +17,7 @@ describe('Unique Constraint Schema Generation', () => {
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that the Drizzle schema contains the User table
@@ -28,7 +28,7 @@ describe('Unique Constraint Schema Generation', () => {
       expect(drizzleSchema).toContain("email: text('email').unique()");
     });
 
-    it('should handle multiple single-field unique constraints', () => {
+    it('should handle multiple single-field unique constraints', async () => {
       const schema = `
         model User {
           id       Int    @id @default(autoincrement())
@@ -38,7 +38,7 @@ describe('Unique Constraint Schema Generation', () => {
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that both fields have unique constraints
@@ -48,18 +48,18 @@ describe('Unique Constraint Schema Generation', () => {
   });
 
   describe('Multi-field unique constraints', () => {
-    it('should generate uniqueIndex for @@unique model attribute', () => {
+    it('should generate uniqueIndex for @@unique model attribute', async () => {
       const schema = `
         model Post {
           id       Int    @id @default(autoincrement())
           title    String
           authorId Int
-          
+
           @@unique([title, authorId])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that the Drizzle schema contains the Post table
@@ -71,18 +71,18 @@ describe('Unique Constraint Schema Generation', () => {
       expect(drizzleSchema).toContain("export const postuniquetitleauthorId =");
     });
 
-    it('should generate named unique constraints', () => {
+    it('should generate named unique constraints', async () => {
       const schema = `
         model Post {
           id       Int    @id @default(autoincrement())
           title    String
           authorId Int
-          
+
           @@unique([title, authorId], name: "unique_post_title_author")
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that the named unique constraint is generated
@@ -90,7 +90,7 @@ describe('Unique Constraint Schema Generation', () => {
       expect(drizzleSchema).toContain("uniqueIndex(");
     });
 
-    it('should handle multiple multi-field unique constraints', () => {
+    it('should handle multiple multi-field unique constraints', async () => {
       const schema = `
         model User {
           id        Int    @id @default(autoincrement())
@@ -98,13 +98,13 @@ describe('Unique Constraint Schema Generation', () => {
           username  String
           firstName String
           lastName  String
-          
+
           @@unique([email])
           @@unique([firstName, lastName])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that both unique constraints are generated
@@ -116,7 +116,7 @@ describe('Unique Constraint Schema Generation', () => {
   });
 
   describe('Mixed unique constraints', () => {
-    it('should handle both field-level and model-level unique constraints', () => {
+    it('should handle both field-level and model-level unique constraints', async () => {
       const schema = `
         model User {
           id       Int    @id @default(autoincrement())
@@ -124,12 +124,12 @@ describe('Unique Constraint Schema Generation', () => {
           username String @unique
           name     String
           age      Int
-          
+
           @@unique([name, age])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check field-level unique constraints
@@ -144,7 +144,7 @@ describe('Unique Constraint Schema Generation', () => {
   });
 
   describe('Complex schema with relations and unique constraints', () => {
-    it('should generate correct schema for complex model with relations', () => {
+    it('should generate correct schema for complex model with relations', async () => {
       const schema = `
         model User {
           id       Int       @id @default(autoincrement())
@@ -159,7 +159,7 @@ describe('Unique Constraint Schema Generation', () => {
           slug     String @unique
           authorId Int
           author   User   @relation(fields: [authorId], references: [id])
-          
+
           @@unique([title, authorId])
         }
 
@@ -169,12 +169,12 @@ describe('Unique Constraint Schema Generation', () => {
           handle   String
           userId   Int
           user     User   @relation(fields: [userId], references: [id])
-          
+
           @@unique([platform, userId])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check User table
@@ -198,18 +198,18 @@ describe('Unique Constraint Schema Generation', () => {
   });
 
   describe('Edge cases', () => {
-    it('should handle unique constraints with special characters in field names', () => {
+    it('should handle unique constraints with special characters in field names', async () => {
       const schema = `
         model User {
           id           Int    @id @default(autoincrement())
           emailAddress String @unique
           userName     String @unique
-          
+
           @@unique([emailAddress, userName])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that camelCase is preserved in field names
@@ -218,17 +218,17 @@ describe('Unique Constraint Schema Generation', () => {
       expect(drizzleSchema).toContain("user.emailAddress, user.userName");
     });
 
-    it('should handle single-field unique constraint using @@unique syntax', () => {
+    it('should handle single-field unique constraint using @@unique syntax', async () => {
       const schema = `
         model User {
           id    Int    @id @default(autoincrement())
           email String
-          
+
           @@unique([email])
         }
       `;
 
-      const ast = parseSchema(schema);
+      const ast = await parseSchema(schema);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
 
       // Check that single-field @@unique generates uniqueIndex

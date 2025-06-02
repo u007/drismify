@@ -2,7 +2,7 @@ import { translatePslToDrizzleSchema } from '../src/translator/pslToDrizzle';
 import { parseSchema } from '../src/parser';
 
 describe('Translator', () => {
-  it('should translate a simple schema to Drizzle schema', () => {
+  it('should translate a simple schema to Drizzle schema', async () => {
     const schema = `
       datasource db {
         provider = "sqlite"
@@ -30,7 +30,7 @@ describe('Translator', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
 
     // Check that the Drizzle schema contains expected imports
@@ -58,7 +58,7 @@ describe('Translator', () => {
     expect(drizzleSchema).toContain("author: one(user");
   });
 
-  it('should translate enums to Drizzle schema', () => {
+  it('should translate enums to Drizzle schema', async () => {
     const schema = `
       enum Role {
         USER
@@ -71,7 +71,7 @@ describe('Translator', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
 
     // Check that the Drizzle schema contains the Role enum
@@ -83,7 +83,7 @@ describe('Translator', () => {
     expect(drizzleSchema).toContain("role: text('role').$type<Role>()");
   });
 
-  it('should translate model attributes to Drizzle schema', () => {
+  it('should translate model attributes to Drizzle schema', async () => {
     const schema = `
       model User {
         id    Int    @id
@@ -95,7 +95,7 @@ describe('Translator', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
 
     // Check that the Drizzle schema contains the User table

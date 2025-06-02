@@ -7,6 +7,7 @@ export * from './base-adapter';
 // Export specific adapters
 export * from './sqlite-adapter';
 export * from './turso-adapter';
+export * from './mongodb-adapter';
 
 // Export factory functions
 export * from './factory';

@@ -31,7 +31,17 @@ export class DrismifyClient implements BaseClient {
 			// Determine adapter type from datasource URL
 			const url = options.datasources.db.url || "";
 			const isLibSQL = url.startsWith("libsql:") || url.startsWith("wss:");
-			const adapterType = isLibSQL ? "turso" : "sqlite";
+			const isMongoDB = url.startsWith("mongodb:") || url.startsWith("mongodb+srv:");
+
+			let adapterType: 'sqlite' | 'turso' | 'mongodb';
+			if (isMongoDB) {
+				adapterType = "mongodb";
+			} else if (isLibSQL) {
+				adapterType = "turso";
+			} else {
+				adapterType = "sqlite";
+			}
+
 			this.adapter = createAdapter(adapterType, options.datasources.db);
 		}
 	}

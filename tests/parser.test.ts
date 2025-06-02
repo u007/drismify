@@ -1,7 +1,7 @@
 import { parseSchema } from '../src/parser';
 
 describe('Parser', () => {
-  it('should parse a simple schema', () => {
+  it('should parse a simple schema', async () => {
     const schema = `
       datasource db {
         provider = "sqlite"
@@ -33,7 +33,7 @@ describe('Parser', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
 
     // Check that the AST has the expected structure
     expect(ast).toBeInstanceOf(Array);
@@ -83,7 +83,7 @@ describe('Parser', () => {
     expect(authorField?.attributes[0].args.references).toEqual(['id']);
   });
 
-  it('should parse enums', () => {
+  it('should parse enums', async () => {
     const schema = `
       enum Role {
         USER
@@ -96,7 +96,7 @@ describe('Parser', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
 
     // Check that the AST has the expected structure
     expect(ast).toBeInstanceOf(Array);
@@ -121,7 +121,7 @@ describe('Parser', () => {
     expect(roleField?.attributes[0].args).toBe('USER');
   });
 
-  it('should parse model attributes', () => {
+  it('should parse model attributes', async () => {
     const schema = `
       model User {
         id    Int    @id
@@ -133,7 +133,7 @@ describe('Parser', () => {
       }
     `;
 
-    const ast = parseSchema(schema);
+    const ast = await parseSchema(schema);
 
     // Check User model
     const userModel = ast.find(node => node.type === 'model' && node.name === 'User');

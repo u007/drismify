@@ -74,8 +74,9 @@
   "dependencies": {
     "@libsql/client": "^0.7.0",
     "better-sqlite3": "^9.0.0",
+    "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.30.0",
-    "drizzle-kit": "^0.31.1"
+    "mongodb": "^6.16.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

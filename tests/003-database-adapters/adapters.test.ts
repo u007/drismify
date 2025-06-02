@@ -2,11 +2,12 @@
  * Tests for the Database Adapters
  */
 
-import { 
-  createAdapter, 
-  DatabaseAdapter, 
-  SQLiteAdapter, 
-  TursoAdapter 
+import {
+  createAdapter,
+  DatabaseAdapter,
+  SQLiteAdapter,
+  TursoAdapter,
+  MongoDBAdapter
 } from '../../src/adapters';
 import { createTestDatabase } from '../utils/test-utils';
 
@@ -21,10 +22,19 @@ describe('Database Adapters', () => {
     
     it('should create a Turso adapter', () => {
       const adapter = createAdapter('turso', { url: 'libsql://localhost:8080' });
-      
+
       expect(adapter).toBeInstanceOf(TursoAdapter);
     });
-    
+
+    it('should create a MongoDB adapter', () => {
+      const adapter = createAdapter('mongodb', {
+        url: 'mongodb://localhost:27017',
+        database: 'test'
+      });
+
+      expect(adapter).toBeInstanceOf(MongoDBAdapter);
+    });
+
     it('should throw an error for unknown adapter type', () => {
       expect(() => {
         // @ts-ignore - Testing invalid adapter type

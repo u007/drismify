@@ -29,6 +29,8 @@ export type ConnectionOptions = {
   ssl?: boolean | Record<string, any>;
   schema?: string;
   connectionLimit?: number;
+  authToken?: string; // For TursoDB
+  authSource?: string; // For MongoDB
 };
 
 /**
@@ -117,6 +119,6 @@ export interface TransactionClient {
  * @param options Connection options for the adapter
  */
 export type DatabaseAdapterFactory = (
-  type: 'sqlite' | 'turso',
+  type: 'sqlite' | 'turso' | 'mongodb',
   options: ConnectionOptions
 ) => DatabaseAdapter;

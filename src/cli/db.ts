@@ -211,7 +211,7 @@ export async function dbPull(options: DbOptions = {}): Promise<void> {
   try {
     const newSchema = await introspectDatabase({
       url,
-      provider: provider as 'sqlite' | 'turso',
+      provider: provider as 'sqlite' | 'turso' | 'mongodb',
       output: schemaPath,
       overwrite: force,
       saveComments: true,

@@ -85,7 +85,7 @@ describe('Unique Constraints', () => {
     fs.writeFileSync(TEST_SCHEMA_PATH, TEST_SCHEMA);
 
     // Generate Drizzle schema
-    const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
     const drizzleSchema = translatePslToDrizzleSchema(ast);
     fs.writeFileSync(TEST_SCHEMA_OUTPUT_PATH, drizzleSchema);
 

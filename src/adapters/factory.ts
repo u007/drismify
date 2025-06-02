@@ -1,6 +1,7 @@
 import { ConnectionOptions, DatabaseAdapter } from './types';
 import { SQLiteAdapter } from './sqlite-adapter';
 import { TursoAdapter } from './turso-adapter';
+import { MongoDBAdapter } from './mongodb-adapter';
 
 /**
  * Singleton instances of database adapters
@@ -15,7 +16,7 @@ const adapterInstances: Record<string, DatabaseAdapter> = {};
  * @returns A database adapter instance
  */
 export function createAdapter(
-  type: 'sqlite' | 'turso',
+  type: 'sqlite' | 'turso' | 'mongodb',
   options: ConnectionOptions,
   singleton: boolean = true
 ): DatabaseAdapter {
@@ -35,6 +36,9 @@ export function createAdapter(
       break;
     case 'turso':
       adapter = new TursoAdapter(options);
+      break;
+    case 'mongodb':
+      adapter = new MongoDBAdapter(options);
       break;
     default:
       throw new Error(`Unsupported database adapter type: ${type}`);
@@ -59,7 +63,7 @@ export function createAdapterFromDatasource(
   singleton: boolean = true
 ): DatabaseAdapter {
   // Determine the adapter type based on the provider
-  let type: 'sqlite' | 'turso';
+  let type: 'sqlite' | 'turso' | 'mongodb';
   switch (datasource.provider.toLowerCase()) {
     case 'sqlite':
       type = 'sqlite';
@@ -67,6 +71,9 @@ export function createAdapterFromDatasource(
     case 'turso':
     case 'libsql':
       type = 'turso';
+      break;
+    case 'mongodb':
+      type = 'mongodb';
       break;
     default:
       throw new Error(`Unsupported database provider: ${datasource.provider}`);

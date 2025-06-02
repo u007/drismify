@@ -106,8 +106,8 @@ describe('Comprehensive Database Constraints', () => {
   });
 
   describe('Schema Parsing', () => {
-    it('should parse all constraint types correctly', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should parse all constraint types correctly', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       
       const userModel = ast.find(node => node.type === 'model' && node.name === 'User');
       expect(userModel).toBeDefined();
@@ -138,8 +138,8 @@ describe('Comprehensive Database Constraints', () => {
       expect(namedUnique.args.fields).toEqual(['email', 'username']);
     });
 
-    it('should parse foreign key constraints with names', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should parse foreign key constraints with names', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       
       const postModel = ast.find(node => node.type === 'model' && node.name === 'Post');
       expect(postModel).toBeDefined();
@@ -156,8 +156,8 @@ describe('Comprehensive Database Constraints', () => {
   });
 
   describe('Drizzle Schema Generation', () => {
-    it('should generate correct Drizzle schema with all constraints', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should generate correct Drizzle schema with all constraints', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       const drizzleSchema = translatePslToDrizzleSchema(ast);
       fs.writeFileSync(TEST_SCHEMA_OUTPUT_PATH, drizzleSchema);
       
@@ -176,8 +176,8 @@ describe('Comprehensive Database Constraints', () => {
   });
 
   describe('Migration SQL Generation', () => {
-    it('should generate correct SQL with all constraint types', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should generate correct SQL with all constraint types', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       const differ = new SchemaDiffer();
       const changes = differ.diffSchemas([], ast);
       
@@ -216,8 +216,8 @@ describe('Comprehensive Database Constraints', () => {
       expect(postSql).toContain('CONSTRAINT unique_post_title_per_author UNIQUE');
     });
 
-    it('should generate index creation statements', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should generate index creation statements', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       const differ = new SchemaDiffer();
       const changes = differ.diffSchemas([], ast);
       
@@ -235,8 +235,8 @@ describe('Comprehensive Database Constraints', () => {
   });
 
   describe('Constraint Validation', () => {
-    it('should validate check constraint syntax', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should validate check constraint syntax', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       
       const categoryModel = ast.find(node => node.type === 'model' && node.name === 'Category');
       const checkConstraints = categoryModel.attributes.filter(attr => attr.name === 'check');
@@ -247,8 +247,8 @@ describe('Comprehensive Database Constraints', () => {
       expect(selfRefCheck.args.constraint).toContain('parentId IS NULL OR parentId != id');
     });
 
-    it('should handle NULL values in unique constraints', () => {
-      const ast = parseSchemaFile(TEST_SCHEMA_PATH);
+    it('should handle NULL values in unique constraints', async () => {
+      const ast = await parseSchemaFile(TEST_SCHEMA_PATH);
       const differ = new SchemaDiffer();
       const changes = differ.diffSchemas([], ast);
       
