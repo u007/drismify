@@ -42,7 +42,7 @@ The test suite is now passing successfully. We've fixed the connection-related e
 
 ### Database Support
 - [ ] Add support for PostgreSQL
-- [ ] Add support for MySQL/MariaDB
+- [x] Add support for MySQL/MariaDB
 - [x] Add support for MongoDB
 - [ ] Add support for SQL Server
 - [ ] Add support for CockroachDB

@@ -1,12 +1,12 @@
 
 # Drismify
 
-A modern, Prisma-compatible ORM replacement supporting SQLite, TursoDB, and MongoDB with full schema compatibility, CLI tools, and advanced extension system. Drismify provides a drop-in replacement for Prisma with enhanced features and better performance.
+A modern, Prisma-compatible ORM replacement supporting SQLite, TursoDB, MySQL/MariaDB, and MongoDB with full schema compatibility, CLI tools, and advanced extension system. Drismify provides a drop-in replacement for Prisma with enhanced features and better performance.
 
 ## Features
 
 - **🔄 Full Prisma Schema Compatibility**: Use your existing Prisma schema files without modification
-- **🗄️ Multi-Database Support**: Built-in support for SQLite, TursoDB, and MongoDB databases (PostgreSQL, MySQL coming soon)
+- **🗄️ Multi-Database Support**: Built-in support for SQLite, TursoDB, MySQL/MariaDB, and MongoDB databases (PostgreSQL coming soon)
 - **⚡ Prisma CLI Compatibility**: Use familiar Prisma CLI commands (`generate`, `db push`, `migrate`, etc.)
 - **🔧 Prisma Extends Support**: Full compatibility with Prisma's `$extends` API for custom methods and behaviors
 - **🚀 No Database Shadowing**: Direct database access without an intermediary layer for better performance
@@ -16,6 +16,7 @@ A modern, Prisma-compatible ORM replacement supporting SQLite, TursoDB, and Mong
 - **🏗️ Composite Types**: Full support for composite types with JSON storage and type safety
 - **🔗 Referential Actions**: Complete support for foreign key constraints and cascading operations
 - **✅ Database Constraints**: CHECK constraints, unique constraints, and custom indexes
+- **🌐 Express.js Integration**: Complete authentication and RBAC system with Bun.js runtime
 
 ## Installation
 
@@ -119,6 +120,12 @@ datasource db {
 //   url      = "mongodb://localhost:27017/mydb"
 // }
 
+// For MySQL/MariaDB:
+// datasource db {
+//   provider = "mysql"
+//   url      = "mysql://user:password@localhost:3306/mydb"
+// }
+
 model User {
   id    Int     @id @default(autoincrement())
   email String  @unique
@@ -195,6 +202,132 @@ async function main() {
 }
 
 main().catch(console.error);
+```
+
+## MySQL/MariaDB Support
+
+Drismify provides full support for MySQL and MariaDB databases with connection pooling, transactions, and native SQL operations.
+
+### MySQL Configuration
+
+MySQL/MariaDB connections can be configured using either connection URLs or detailed connection parameters:
+
+```typescript
+import { MySQLAdapter } from 'drismify';
+
+// Using connection URL
+const adapter = new MySQLAdapter({
+  url: 'mysql://user:password@localhost:3306/mydb'
+});
+
+// Using connection parameters
+const adapter = new MySQLAdapter({
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'password',
+  database: 'mydb',
+  connectionLimit: 10,
+  ssl: false
+});
+
+await adapter.connect();
+```
+
+### MySQL Schema Example
+
+```prisma
+generator client {
+  provider = "drismify"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?  @db.Text
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+### MySQL Operations
+
+```typescript
+import { MySQLAdapter } from 'drismify';
+
+// Create MySQL adapter
+const adapter = new MySQLAdapter({
+  url: 'mysql://root:password@localhost:3306/myapp'
+});
+
+await adapter.connect();
+
+// Execute queries
+const users = await adapter.execute(
+  'SELECT * FROM users WHERE email = ?',
+  ['user@example.com']
+);
+
+// Use transactions
+const result = await adapter.transaction(async (tx) => {
+  const user = await tx.execute(
+    'INSERT INTO users (email, name) VALUES (?, ?)',
+    ['john@example.com', 'John Doe']
+  );
+
+  const post = await tx.execute(
+    'INSERT INTO posts (title, authorId) VALUES (?, ?)',
+    ['My First Post', user.insertId]
+  );
+
+  return { user, post };
+});
+
+// Batch operations
+const queries = [
+  { query: 'SELECT COUNT(*) as userCount FROM users' },
+  { query: 'SELECT COUNT(*) as postCount FROM posts' }
+];
+
+const results = await adapter.batch(queries);
+```
+
+### Connection Pooling
+
+MySQL adapter automatically uses connection pooling for optimal performance:
+
+```typescript
+const adapter = new MySQLAdapter({
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'password',
+  database: 'mydb',
+  connectionLimit: 20,     // Maximum connections in pool
+  acquireTimeout: 60000,   // Connection acquisition timeout
+  timeout: 60000,          // Query timeout
+  reconnect: true,         // Auto-reconnect on connection loss
+  ssl: {                   // SSL configuration
+    rejectUnauthorized: false
+  }
+});
 ```
 
 ## MongoDB Support
@@ -1234,8 +1367,8 @@ await generator.generateFromAST(ast);
 
 ### 🎯 **Upcoming Features**
 
-- **Multi-Database Support**: PostgreSQL, MySQL, MongoDB support
-- **Performance Optimizations**: Query optimization and connection pooling
+- **Multi-Database Support**: PostgreSQL support (MySQL/MariaDB and MongoDB already supported)
+- **Performance Optimizations**: Query optimization and enhanced connection pooling
 - **Advanced Extensions**: More built-in extensions for common use cases
 - **Developer Tools**: Enhanced debugging and development experience
 - **Documentation**: Comprehensive API documentation and tutorials
@@ -1295,7 +1428,7 @@ We welcome contributions! Please:
 Drismify is actively developed and continuously improving. Current limitations:
 
 ### Database Support
-- SQLite, TursoDB, and MongoDB are currently supported (PostgreSQL, MySQL, etc. pending)
+- SQLite, TursoDB, MySQL/MariaDB, and MongoDB are currently supported (PostgreSQL pending)
 
 ### Query Features
 - Advanced filtering operations (contains, startsWith, endsWith, etc.)

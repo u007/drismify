@@ -32,12 +32,15 @@ export class DrismifyClient implements BaseClient {
 			const url = options.datasources.db.url || "";
 			const isLibSQL = url.startsWith("libsql:") || url.startsWith("wss:");
 			const isMongoDB = url.startsWith("mongodb:") || url.startsWith("mongodb+srv:");
+			const isMySQL = url.startsWith("mysql:") || url.startsWith("mysql2:");
 
-			let adapterType: 'sqlite' | 'turso' | 'mongodb';
+			let adapterType: 'sqlite' | 'turso' | 'mongodb' | 'mysql';
 			if (isMongoDB) {
 				adapterType = "mongodb";
 			} else if (isLibSQL) {
 				adapterType = "turso";
+			} else if (isMySQL) {
+				adapterType = "mysql";
 			} else {
 				adapterType = "sqlite";
 			}

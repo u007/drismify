@@ -1,4 +1,4 @@
-// This is a sample Prisma schema file for Drismify
+// Enhanced Prisma schema for Drismify with Authentication and RBAC
 
 datasource db {
   provider = "sqlite"
@@ -6,34 +6,130 @@ datasource db {
 }
 
 generator client {
-  provider = "drismify-client-js" // Our custom client
-  output   = "../generated/drismify-client"
+  provider = "drismify"
+  output   = "./generated/client"
 }
 
+// User model with authentication fields
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String? // Optional field
-  active Boolean @default(true)
-  posts Post[]  // Relation field (parsing of this specific type might need refinement)
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  username    String?   @unique
+  name        String?
+  password    String    // Hashed password
+  active      Boolean   @default(true)
+  verified    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  posts     Post[]
+  userRoles UserRole[]
+  sessions  Session[]
+
+  @@map("users")
 }
 
+// Role model for RBAC
+model Role {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  description String?
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+// Permission model for fine-grained access control
+model Permission {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  resource    String // e.g., "posts", "users", "admin"
+  action      String // e.g., "create", "read", "update", "delete"
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+// Junction table for User-Role many-to-many relationship
+model UserRole {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  roleId     Int
+  assignedAt DateTime @default(now())
+  assignedBy Int?     // User ID who assigned this role
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// Junction table for Role-Permission many-to-many relationship
+model RolePermission {
+  id           Int @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Session model for JWT token management
+model Session {
+  id        String   @id @default(cuid())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ipAddress String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Enhanced Post model
 model Post {
-  id Int @id
-  title String
-  published Boolean?
-  author User @relation(fields: [authorId], references: [id])
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  type      PostType @default(TEXT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId Int
+
+  @@map("posts")
 }
 
-enum Role {
-  USER
-  ADMIN // Can be an admin
-  MODERATOR
-}
-
+// Enums
 enum PostType {
   TEXT
   AUDIO
   VIDEO
+  IMAGE
 }

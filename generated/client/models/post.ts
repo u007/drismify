@@ -1,6 +1,6 @@
 
-import { DatabaseAdapter, TransactionClient } from '../../../src/adapters';
-import { BaseModelClient } from '../../../src/client/model-client';
+import { DatabaseAdapter, TransactionClient } from '../../src/adapters';
+import { BaseModelClient } from '../../src/client/model-client';
 import { PslModelAst } from '../index';
 import {
   Post,

@@ -1,7 +1,7 @@
 {
   "name": "drismify",
   "version": "0.2.1",
-  "description": "A Prisma-compatible ORM replacement supporting SQLite and TursoDB with full schema compatibility and CLI tools",
+  "description": "A Prisma-compatible ORM replacement supporting SQLite, TursoDB, MySQL/MariaDB, and MongoDB with full schema compatibility and CLI tools",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -55,6 +55,8 @@
     "sqlite",
     "turso",
     "libsql",
+    "mysql",
+    "mariadb",
     "typescript",
     "drizzle",
     "schema",
@@ -76,7 +78,8 @@
     "better-sqlite3": "^9.0.0",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.30.0",
-    "mongodb": "^6.16.0"
+    "mongodb": "^6.16.0",
+    "mysql2": "^3.14.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

@@ -119,6 +119,6 @@ export interface TransactionClient {
  * @param options Connection options for the adapter
  */
 export type DatabaseAdapterFactory = (
-  type: 'sqlite' | 'turso' | 'mongodb',
+  type: 'sqlite' | 'turso' | 'mongodb' | 'mysql',
   options: ConnectionOptions
 ) => DatabaseAdapter;

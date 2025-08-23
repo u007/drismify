@@ -2,6 +2,7 @@ import { ConnectionOptions, DatabaseAdapter } from './types';
 import { SQLiteAdapter } from './sqlite-adapter';
 import { TursoAdapter } from './turso-adapter';
 import { MongoDBAdapter } from './mongodb-adapter';
+import { MySQLAdapter } from './mysql-adapter';
 
 /**
  * Singleton instances of database adapters
@@ -16,7 +17,7 @@ const adapterInstances: Record<string, DatabaseAdapter> = {};
  * @returns A database adapter instance
  */
 export function createAdapter(
-  type: 'sqlite' | 'turso' | 'mongodb',
+  type: 'sqlite' | 'turso' | 'mongodb' | 'mysql',
   options: ConnectionOptions,
   singleton: boolean = true
 ): DatabaseAdapter {
@@ -39,6 +40,9 @@ export function createAdapter(
       break;
     case 'mongodb':
       adapter = new MongoDBAdapter(options);
+      break;
+    case 'mysql':
+      adapter = new MySQLAdapter(options);
       break;
     default:
       throw new Error(`Unsupported database adapter type: ${type}`);
@@ -63,7 +67,7 @@ export function createAdapterFromDatasource(
   singleton: boolean = true
 ): DatabaseAdapter {
   // Determine the adapter type based on the provider
-  let type: 'sqlite' | 'turso' | 'mongodb';
+  let type: 'sqlite' | 'turso' | 'mongodb' | 'mysql';
   switch (datasource.provider.toLowerCase()) {
     case 'sqlite':
       type = 'sqlite';
@@ -74,6 +78,10 @@ export function createAdapterFromDatasource(
       break;
     case 'mongodb':
       type = 'mongodb';
+      break;
+    case 'mysql':
+    case 'mariadb':
+      type = 'mysql';
       break;
     default:
       throw new Error(`Unsupported database provider: ${datasource.provider}`);
@@ -94,6 +102,24 @@ export function createAdapterFromDatasource(
       options.password = url.password;
     } else if (datasource.authToken) {
       options.password = datasource.authToken;
+    }
+  } else if (type === 'mysql') {
+    // Parse MySQL URL for connection details
+    try {
+      const url = new URL(datasource.url);
+      options.host = url.hostname;
+      options.port = parseInt(url.port) || 3306;
+      options.user = url.username;
+      options.password = url.password;
+      options.database = url.pathname.slice(1); // Remove leading slash
+
+      // Parse SSL options from query parameters
+      if (url.searchParams.has('ssl')) {
+        options.ssl = url.searchParams.get('ssl') === 'true';
+      }
+    } catch (error) {
+      // If URL parsing fails, keep the original URL
+      options.url = datasource.url;
     }
   }
 

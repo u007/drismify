@@ -66,6 +66,7 @@ Commands:
 
 Examples:
   drismify init my-app                Create new project
+  drismify init my-app --provider mysql  Create new MySQL project
   drismify generate schema.prisma     Generate client
   drismify db push                    Push schema changes
   drismify migrate dev                Create and apply migration
@@ -316,13 +317,13 @@ async function main() {
     } else if (command === 'init') {
         // Initialize a new Drismify project
         let directory = '.';
-        let provider: 'sqlite' | 'turso' | 'mongodb' = 'sqlite';
+        let provider: 'sqlite' | 'turso' | 'mongodb' | 'mysql' = 'sqlite';
 
         // Parse arguments
         for (let i = 1; i < args.length; i++) {
             const arg = args[i];
             if (arg === '--provider') {
-                provider = args[i + 1] as 'sqlite' | 'turso' | 'mongodb';
+                provider = args[i + 1] as 'sqlite' | 'turso' | 'mongodb' | 'mysql';
                 i++; // Skip the next argument since it's the provider value
             } else if (!arg.startsWith('--')) {
                 directory = arg;
@@ -371,7 +372,7 @@ async function main() {
 
             const schema = await introspectDatabase({
                 url: databaseUrl,
-                provider: provider as 'sqlite' | 'turso' | 'mongodb',
+                provider: provider as 'sqlite' | 'turso' | 'mongodb' | 'mysql',
                 output: outputPath,
                 overwrite: args.includes('--overwrite'),
                 saveComments: !args.includes('--no-comments'),

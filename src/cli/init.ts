@@ -13,7 +13,7 @@ export interface InitOptions {
   /**
    * Database provider to use
    */
-  provider?: 'sqlite' | 'turso' | 'mongodb';
+  provider?: 'sqlite' | 'turso' | 'mongodb' | 'mysql';
   
   /**
    * Database URL
@@ -40,6 +40,7 @@ export async function initProject(options: InitOptions = {}): Promise<void> {
     provider = 'sqlite',
     url = provider === 'sqlite' ? 'file:./dev.db' :
           provider === 'turso' ? 'libsql://localhost:8080' :
+          provider === 'mysql' ? 'mysql://root:password@localhost:3306/mydb' :
           'mongodb://localhost:37017/mydb',
     typescript = true,
     overwrite = false
@@ -173,6 +174,18 @@ model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?  ${provider === 'mysql' ? '@db.Text' : ''}
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

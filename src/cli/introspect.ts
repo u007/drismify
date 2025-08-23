@@ -4,6 +4,7 @@ import { DatabaseAdapter } from '../adapters';
 import { SQLiteAdapter } from '../adapters/sqlite-adapter';
 import { TursoAdapter } from '../adapters/turso-adapter';
 import { MongoDBAdapter } from '../adapters/mongodb-adapter';
+import { MySQLAdapter } from '../adapters/mysql-adapter';
 
 /**
  * Introspection options
@@ -15,9 +16,9 @@ export interface IntrospectionOptions {
   url?: string;
   
   /**
-   * Database provider (sqlite, turso, or mongodb)
+   * Database provider (sqlite, turso, mongodb, or mysql)
    */
-  provider?: 'sqlite' | 'turso' | 'mongodb';
+  provider?: 'sqlite' | 'turso' | 'mongodb' | 'mysql';
   
   /**
    * Output path for the generated Prisma schema
@@ -74,6 +75,8 @@ export async function introspectDatabase(options: IntrospectionOptions): Promise
     const mongoUrl = new URL(url);
     const database = mongoUrl.pathname.slice(1) || 'test'; // Remove leading slash, default to 'test'
     adapter = new MongoDBAdapter({ url, database });
+  } else if (provider === 'mysql') {
+    adapter = new MySQLAdapter({ url });
   } else {
     throw new Error(`Unsupported provider: ${provider}`);
   }
